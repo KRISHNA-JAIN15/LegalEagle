@@ -10,6 +10,12 @@ import {
   Building,
   Users,
   Briefcase,
+  FileText,
+  Search,
+  CheckCircle,
+  AlertTriangle,
+  BarChart3,
+  Lock,
 } from "lucide-react";
 import "./Features.css";
 
@@ -24,6 +30,35 @@ const Features = () => {
         "Upload contracts, agreements, or any legal document. Our AI extracts key clauses, identifies risks, and provides comprehensive summaries in seconds.",
       link: "/features#analysis",
       visual: "primary",
+      visualContent: (
+        <div className="visual-demo visual-demo-analysis">
+          <div className="demo-card demo-card-main">
+            <div className="demo-card-header">
+              <FileText size={20} />
+              <span>Contract_Agreement.pdf</span>
+            </div>
+            <div className="demo-card-body">
+              <div className="demo-line"></div>
+              <div className="demo-line short"></div>
+              <div className="demo-line"></div>
+              <div className="demo-highlight">
+                <AlertTriangle size={14} />
+                <span>Risk clause detected</span>
+              </div>
+              <div className="demo-line"></div>
+              <div className="demo-line short"></div>
+            </div>
+          </div>
+          <div className="demo-floating demo-floating-1">
+            <CheckCircle size={16} />
+            <span>98% Analyzed</span>
+          </div>
+          <div className="demo-floating demo-floating-2">
+            <BarChart3 size={16} />
+            <span>12 Key Clauses</span>
+          </div>
+        </div>
+      ),
     },
     {
       icon: <MessageSquare size={28} />,
@@ -31,7 +66,30 @@ const Features = () => {
       description:
         "Ask questions in plain English about your documents. Get accurate, context-aware answers backed by specific citations from your uploaded files.",
       link: "/features#qa",
-      visual: "illustration",
+      visual: "secondary",
+      visualContent: (
+        <div className="visual-demo visual-demo-qa">
+          <div className="demo-chat">
+            <div className="demo-message demo-message-user">
+              <span>What are the termination clauses?</span>
+            </div>
+            <div className="demo-message demo-message-ai">
+              <span>
+                Based on Section 8.2, the contract can be terminated with 30
+                days written notice...
+              </span>
+              <div className="demo-citation">
+                <FileText size={12} />
+                <span>Page 12, Section 8.2</span>
+              </div>
+            </div>
+          </div>
+          <div className="demo-input-preview">
+            <Search size={16} />
+            <span>Ask anything about your document...</span>
+          </div>
+        </div>
+      ),
     },
     {
       icon: <Shield size={28} />,
@@ -40,6 +98,42 @@ const Features = () => {
         "Automatically verify documents against regulatory requirements. Stay compliant with real-time alerts and detailed compliance reports.",
       link: "/features#compliance",
       visual: "primary",
+      visualContent: (
+        <div className="visual-demo visual-demo-compliance">
+          <div className="demo-compliance-card">
+            <div className="demo-compliance-header">
+              <Shield size={20} />
+              <span>Compliance Report</span>
+            </div>
+            <div className="demo-compliance-stats">
+              <div className="demo-stat-item demo-stat-pass">
+                <CheckCircle size={18} />
+                <div>
+                  <span className="stat-number">24</span>
+                  <span className="stat-label">Passed</span>
+                </div>
+              </div>
+              <div className="demo-stat-item demo-stat-warn">
+                <AlertTriangle size={18} />
+                <div>
+                  <span className="stat-number">3</span>
+                  <span className="stat-label">Warnings</span>
+                </div>
+              </div>
+              <div className="demo-stat-item demo-stat-secure">
+                <Lock size={18} />
+                <div>
+                  <span className="stat-number">100%</span>
+                  <span className="stat-label">Secure</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="demo-floating demo-floating-3">
+            <span className="compliance-badge">GDPR Ready</span>
+          </div>
+        </div>
+      ),
     },
   ];
 
@@ -108,6 +202,13 @@ const Features = () => {
 
           {mainFeatures.map((feature, index) => (
             <div key={index} className="feature-row">
+              <div
+                className={`feature-visual feature-visual-${feature.visual}`}
+              >
+                <div className="feature-visual-content">
+                  {feature.visualContent}
+                </div>
+              </div>
               <div className="feature-content">
                 <div className="feature-icon">{feature.icon}</div>
                 <h3>{feature.title}</h3>
@@ -116,9 +217,6 @@ const Features = () => {
                   Learn More <ArrowRight size={18} />
                 </Link>
               </div>
-              <div
-                className={`feature-visual feature-visual-${feature.visual}`}
-              ></div>
             </div>
           ))}
         </div>
