@@ -145,11 +145,11 @@ const Features = () => {
       description:
         "Accelerate contract review, due diligence, and legal research. Give your team more time to focus on high-value strategic work.",
     },
-    {
-      icon: <Building size={24} />,
-      title: "Enterprises",
-      shortDesc: "Manage legal risk at scale",
-    },
+    // {
+    //   icon: <Building size={24} />,
+    //   title: "Enterprises",
+    //   shortDesc: "Manage legal risk at scale",
+    // },
     {
       icon: <Users size={24} />,
       title: "Legal Teams",
@@ -165,23 +165,31 @@ const Features = () => {
   const useCaseDetails = [
     {
       description:
-        "Accelerate contract review, due diligence, and legal research. Give your team more time to focus on high-value strategic work with AI-powered document analysis.",
+        "Accelerate contract review, due diligence, and legal research. Give your team more time to focus on high-value strategic work with AI-powered document analysis. ",
       projects: ["Baker McKenzie", "Latham & Watkins", "DLA Piper"],
+      stat: "90%",
+      statDesc: "Faster Review",
     },
     {
       description:
         "Manage thousands of contracts across departments. Identify risks, ensure compliance, and maintain visibility over your entire legal portfolio.",
       projects: ["Microsoft", "Google", "Amazon"],
+      stat: "10K+",
+      statDesc: "Contracts Managed",
     },
     {
       description:
         "Enable seamless collaboration between legal and business teams. Share insights, track changes, and maintain version control with ease.",
       projects: ["Stripe Legal", "Coinbase", "Shopify"],
+      stat: "5x",
+      statDesc: "Team Efficiency",
     },
     {
       description:
         "Deliver comprehensive legal analysis to clients faster than ever. Stand out with AI-enhanced insights and detailed reports.",
       projects: ["Deloitte Legal", "PwC", "EY Law"],
+      stat: "24hr",
+      statDesc: "Turnaround Time",
     },
   ];
 
@@ -250,7 +258,19 @@ const Features = () => {
             </div>
 
             <div className="use-case-detail">
-              <p>{useCaseDetails[activeUseCase].description}</p>
+              <div className="use-case-detail-content">
+                <p>{useCaseDetails[activeUseCase].description}</p>
+              </div>
+              <div className="use-case-visual">
+                <div className="use-case-stat">
+                  <span className="stat-big">
+                    {useCaseDetails[activeUseCase].stat || "90%"}
+                  </span>
+                  <span className="stat-desc">
+                    {useCaseDetails[activeUseCase].statDesc || "Time Saved"}
+                  </span>
+                </div>
+              </div>
               <div className="use-case-projects">
                 <span>Trusted by leading organizations</span>
                 <div className="project-logos">
