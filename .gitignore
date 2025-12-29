@@ -1,0 +1,3 @@
+server/.env
+# ignore the server virtual environment
+server/venv/
