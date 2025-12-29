@@ -31,20 +31,22 @@ const Hero = () => {
           </div>
 
           <div className="hero-visual">
-            <div className="hero-card hero-card-gradient"></div>
-            <div className="hero-card-info">
-              <p>
-                Upload any legal document and get instant AI-powered analysis.
-                From contracts to compliance documents, LegalEagle understands
-                the nuances of legal language.
-              </p>
-              <div className="hero-buttons">
-                <Link to="/features" className="btn btn-primary">
-                  Explore Features
-                </Link>
-                <Link to="/docs" className="btn btn-outline">
-                  Read Docs
-                </Link>
+            <div className="hero-cards-wrapper">
+              <div className="hero-card-gradient"></div>
+              <div className="hero-card-info">
+                <p>
+                  Upload any legal document and get instant AI-powered analysis.
+                  From contracts to compliance documents, LegalEagle understands
+                  the nuances of legal language.
+                </p>
+                <div className="hero-info-buttons">
+                  <Link to="/features" className="btn btn-primary">
+                    Explore Features
+                  </Link>
+                  <Link to="/docs" className="btn btn-outline">
+                    Read Docs
+                  </Link>
+                </div>
               </div>
             </div>
           </div>
