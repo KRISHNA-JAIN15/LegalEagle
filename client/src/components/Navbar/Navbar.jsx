@@ -1,11 +1,45 @@
-import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { Menu, X, Github, Twitter, MessageCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import {
+  Menu,
+  X,
+  Github,
+  Twitter,
+  MessageCircle,
+  LogOut,
+  User,
+} from "lucide-react";
+import { supabase } from "../../supabaseClient";
 import "./Navbar.css";
 
 const Navbar = () => {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [userName, setUserName] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Check if user is logged in
+    const token = localStorage.getItem("userToken");
+    const name = localStorage.getItem("userName");
+
+    if (token && name) {
+      setIsAuthenticated(true);
+      setUserName(name);
+    }
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    localStorage.removeItem("userToken");
+    localStorage.removeItem("userName");
+    localStorage.removeItem("userEmail");
+    localStorage.removeItem("userId");
+    setIsAuthenticated(false);
+    setUserName(null);
+    navigate("/");
+  };
 
   const navLinks = [
     { name: "Features", path: "/features" },
@@ -92,13 +126,48 @@ const Navbar = () => {
 
       <span className="navbar-divider"></span>
 
-      <Link
-        to="/login"
-        className="navbar-cta"
-        onClick={() => setIsMobileOpen(false)}
-      >
-        Get Started
-      </Link>
+      {isAuthenticated ? (
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "8px 12px",
+              backgroundColor: "#f3f4f6",
+              borderRadius: "8px",
+            }}
+          >
+            <User size={18} />
+            <span style={{ fontWeight: "500", color: "#1f2937" }}>
+              {userName}
+            </span>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="navbar-cta"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              backgroundColor: "#ef4444",
+              border: "none",
+              cursor: "pointer",
+            }}
+          >
+            <LogOut size={18} />
+            Logout
+          </button>
+        </div>
+      ) : (
+        <Link
+          to="/login"
+          className="navbar-cta"
+          onClick={() => setIsMobileOpen(false)}
+        >
+          Get Started
+        </Link>
+      )}
     </nav>
   );
 };
