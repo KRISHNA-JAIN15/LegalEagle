@@ -42,48 +42,73 @@ const AuthHandler = () => {
     // Handle the auth callback from magic link
     const handleAuthCallback = async () => {
       // Check if there's a hash fragment with access_token
-      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const hash = window.location.hash;
+      console.log("Current URL hash:", hash);
+      
+      if (!hash || !hash.includes('access_token')) {
+        console.log("No access token in URL hash");
+        return;
+      }
+
+      const hashParams = new URLSearchParams(hash.substring(1));
       const accessToken = hashParams.get("access_token");
       const refreshToken = hashParams.get("refresh_token");
       const type = hashParams.get("type");
 
-      if (accessToken && type === "magiclink") {
+      console.log("Parsed tokens:", { 
+        hasAccessToken: !!accessToken, 
+        hasRefreshToken: !!refreshToken, 
+        type 
+      });
+
+      if (accessToken && refreshToken) {
         console.log("Magic link detected, processing authentication...");
 
-        // Set the session using the tokens from URL
-        const { data, error } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        });
+        try {
+          // Set the session using the tokens from URL
+          const { data, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
 
-        if (error) {
-          console.error("Error setting session:", error);
-          alert("Authentication failed. Please try again.");
-          navigate("/login");
-        } else if (data.session) {
-          console.log("Session established successfully");
-          // Store user data in localStorage
-          localStorage.setItem("userToken", data.session.access_token);
-          localStorage.setItem("userEmail", data.session.user.email);
-          localStorage.setItem("userId", data.session.user.id);
-
-          // Store user metadata if available
-          if (data.session.user.user_metadata?.name) {
-            localStorage.setItem(
-              "userName",
-              data.session.user.user_metadata.name
-            );
-          } else {
-            // Use email as fallback for name
-            const name = data.session.user.email.split("@")[0];
-            localStorage.setItem("userName", name);
+          if (error) {
+            console.error("Error setting session:", error);
+            alert("Authentication failed: " + error.message);
+            navigate("/login");
+            return;
           }
 
-          // Clear the hash from URL
-          window.history.replaceState(null, "", window.location.pathname);
+          if (data.session) {
+            console.log("Session established successfully", data.session.user.email);
+            // Store user data in localStorage
+            localStorage.setItem("userToken", data.session.access_token);
+            localStorage.setItem("userEmail", data.session.user.email);
+            localStorage.setItem("userId", data.session.user.id);
 
-          // Navigate to dashboard
-          navigate("/dashboard");
+            // Store user metadata if available
+            if (data.session.user.user_metadata?.name) {
+              localStorage.setItem(
+                "userName",
+                data.session.user.user_metadata.name
+              );
+            } else {
+              // Use email as fallback for name
+              const name = data.session.user.email.split("@")[0];
+              localStorage.setItem("userName", name);
+            }
+
+            // Clear the hash from URL
+            window.history.replaceState(null, "", window.location.pathname);
+
+            // Navigate to dashboard after a brief delay
+            setTimeout(() => {
+              console.log("Navigating to dashboard");
+              navigate("/dashboard", { replace: true });
+            }, 100);
+          }
+        } catch (err) {
+          console.error("Exception during auth:", err);
+          alert("Authentication error: " + err.message);
         }
       }
     };
