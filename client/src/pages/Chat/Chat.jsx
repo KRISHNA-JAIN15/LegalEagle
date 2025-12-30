@@ -19,6 +19,7 @@ import {
   Home,
   LogOut,
   User,
+  Edit2,
 } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 import "./Chat.css";
@@ -57,6 +58,8 @@ const Chat = () => {
   });
   const [showChatMenu, setShowChatMenu] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [editingChatId, setEditingChatId] = useState(null);
+  const [editingTitle, setEditingTitle] = useState("");
   const [userName] = useState(() => localStorage.getItem("userName") || "User");
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -154,6 +157,44 @@ const Chat = () => {
       )
     );
     setShowChatMenu(null);
+  };
+
+  const startRenameChat = (chatId, currentTitle, e) => {
+    e.stopPropagation();
+    setEditingChatId(chatId);
+    setEditingTitle(currentTitle);
+    setShowChatMenu(null);
+  };
+
+  const saveRename = (chatId) => {
+    if (editingTitle.trim()) {
+      setChats((prev) =>
+        prev.map((chat) =>
+          chat.id === chatId
+            ? {
+                ...chat,
+                title: editingTitle.trim(),
+                updatedAt: new Date().toISOString(),
+              }
+            : chat
+        )
+      );
+    }
+    setEditingChatId(null);
+    setEditingTitle("");
+  };
+
+  const cancelRename = () => {
+    setEditingChatId(null);
+    setEditingTitle("");
+  };
+
+  const handleRenameKeyPress = (e, chatId) => {
+    if (e.key === "Enter") {
+      saveRename(chatId);
+    } else if (e.key === "Escape") {
+      cancelRename();
+    }
   };
 
   const handleFileUpload = async (e) => {
@@ -414,6 +455,7 @@ const Chat = () => {
                     onClick={() => selectChat(chat.id)}
                     onDelete={(e) => deleteChat(chat.id, e)}
                     onPin={(e) => togglePinChat(chat.id, e)}
+                    onRename={(e) => startRenameChat(chat.id, chat.title, e)}
                     showMenu={showChatMenu === chat.id}
                     onMenuToggle={(e) => {
                       e.stopPropagation();
@@ -422,6 +464,12 @@ const Chat = () => {
                       );
                     }}
                     formatDate={formatDate}
+                    isEditing={editingChatId === chat.id}
+                    editingTitle={editingTitle}
+                    onEditingTitleChange={setEditingTitle}
+                    onSaveRename={() => saveRename(chat.id)}
+                    onCancelRename={cancelRename}
+                    onRenameKeyPress={(e) => handleRenameKeyPress(e, chat.id)}
                   />
                 ))}
               </div>
@@ -443,6 +491,7 @@ const Chat = () => {
                     onClick={() => selectChat(chat.id)}
                     onDelete={(e) => deleteChat(chat.id, e)}
                     onPin={(e) => togglePinChat(chat.id, e)}
+                    onRename={(e) => startRenameChat(chat.id, chat.title, e)}
                     showMenu={showChatMenu === chat.id}
                     onMenuToggle={(e) => {
                       e.stopPropagation();
@@ -451,6 +500,12 @@ const Chat = () => {
                       );
                     }}
                     formatDate={formatDate}
+                    isEditing={editingChatId === chat.id}
+                    editingTitle={editingTitle}
+                    onEditingTitleChange={setEditingTitle}
+                    onSaveRename={() => saveRename(chat.id)}
+                    onCancelRename={cancelRename}
+                    onRenameKeyPress={(e) => handleRenameKeyPress(e, chat.id)}
                   />
                 ))}
               </div>
@@ -644,9 +699,16 @@ const ChatItem = ({
   onClick,
   onDelete,
   onPin,
+  onRename,
   showMenu,
   onMenuToggle,
   formatDate,
+  isEditing,
+  editingTitle,
+  onEditingTitleChange,
+  onSaveRename,
+  onCancelRename,
+  onRenameKeyPress,
 }) => {
   return (
     <div
@@ -661,7 +723,20 @@ const ChatItem = ({
       <div className="chat-item-content">
         <div className="chat-item-title">
           {chat.isPinned && <Pin size={12} className="pin-indicator" />}
-          <span>{chat.title}</span>
+          {isEditing ? (
+            <input
+              type="text"
+              className="chat-title-input"
+              value={editingTitle}
+              onChange={(e) => onEditingTitleChange(e.target.value)}
+              onKeyDown={onRenameKeyPress}
+              onBlur={onSaveRename}
+              autoFocus
+              onClick={(e) => e.stopPropagation()}
+            />
+          ) : (
+            <span>{chat.title}</span>
+          )}
         </div>
         <div className="chat-item-meta">
           <span>{formatDate(chat.updatedAt)}</span>
@@ -674,6 +749,10 @@ const ChatItem = ({
         </button>
         {showMenu && (
           <div className="chat-menu">
+            <button onClick={onRename}>
+              <Edit2 size={14} />
+              <span>Rename</span>
+            </button>
             <button onClick={onPin}>
               <Pin size={14} />
               <span>{chat.isPinned ? "Unpin" : "Pin"}</span>
