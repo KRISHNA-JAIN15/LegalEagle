@@ -28,7 +28,7 @@ const Features = () => {
       title: "Document Analysis Engine",
       description:
         "Upload contracts, agreements, or any legal document. Our AI extracts key clauses, identifies risks, and provides comprehensive summaries in seconds.",
-      link: "/features#analysis",
+      link: "/chat",
       visual: "primary",
       visualContent: (
         <div className="visual-demo visual-demo-analysis">
@@ -65,7 +65,7 @@ const Features = () => {
       title: "Intelligent Q&A",
       description:
         "Ask questions in plain English about your documents. Get accurate, context-aware answers backed by specific citations from your uploaded files.",
-      link: "/features#qa",
+      link: "/chat",
       visual: "secondary",
       visualContent: (
         <div className="visual-demo visual-demo-qa">
@@ -96,7 +96,7 @@ const Features = () => {
       title: "Compliance Checker",
       description:
         "Automatically verify documents against regulatory requirements. Stay compliant with real-time alerts and detailed compliance reports.",
-      link: "/features#compliance",
+      link: "/chat",
       visual: "primary",
       visualContent: (
         <div className="visual-demo visual-demo-compliance">

@@ -23,9 +23,9 @@ const Hero = () => {
                 Start Analyzing
                 <ArrowRight size={20} />
               </Link>
-              <Link to="/how-it-works" className="btn btn-secondary btn-lg">
+              <Link to="/docs" className="btn btn-secondary btn-lg">
                 <Play size={18} />
-                Watch Demo
+                Learn More
               </Link>
             </div>
           </div>
@@ -40,8 +40,8 @@ const Hero = () => {
                   the nuances of legal language.
                 </p>
                 <div className="hero-info-buttons">
-                  <Link to="/features" className="btn btn-primary">
-                    Explore Features
+                  <Link to="/chat" className="btn btn-primary">
+                    Try Now
                   </Link>
                   <Link to="/docs" className="btn btn-outline">
                     Read Docs

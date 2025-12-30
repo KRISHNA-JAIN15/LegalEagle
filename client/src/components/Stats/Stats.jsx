@@ -21,7 +21,7 @@ const Stats = () => {
           Trusted by law firms, enterprises, and legal professionals worldwide
         </p>
         <div className="stats-cta">
-          <Link to="/signup" className="btn btn-secondary">
+          <Link to="/chat" className="btn btn-secondary">
             Explore The Platform
           </Link>
         </div>

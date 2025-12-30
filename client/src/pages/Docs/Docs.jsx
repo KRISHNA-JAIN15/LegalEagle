@@ -350,8 +350,8 @@ LegalEagle: "Based on the uploaded contract, the key obligations include:
               <h2>Features</h2>
             </div>
             <p className="section-lead">
-              Discover the powerful capabilities that make LegalEagle the
-              go-to platform for legal document analysis.
+              Discover the powerful capabilities that make LegalEagle the go-to
+              platform for legal document analysis.
             </p>
 
             <div className="features-grid">
@@ -541,19 +541,19 @@ LegalEagle: "Based on the uploaded contract, the key obligations include:
                 <span>Description</span>
               </div>
               <div className="command-row">
-                <code>/summarize</code>
+                <code className="code">/summarize</code>
                 <span>Generate a summary of the current document</span>
               </div>
               <div className="command-row">
-                <code>/extract [type]</code>
+                <code className="code">/extract [type]</code>
                 <span>Extract specific elements (dates, parties, amounts)</span>
               </div>
               <div className="command-row">
-                <code>/compare</code>
+                <code className="code">/compare</code>
                 <span>Compare two uploaded documents</span>
               </div>
               <div className="command-row">
-                <code>/export</code>
+                <code className="code">/export</code>
                 <span>Export the conversation as PDF or Markdown</span>
               </div>
             </div>

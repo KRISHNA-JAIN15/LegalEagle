@@ -52,7 +52,11 @@ const Navbar = () => {
   return (
     <nav className={`navbar ${isMobileOpen ? "mobile-open" : ""}`}>
       <div className="navbar-header">
-        <Link to="/" className="navbar-brand">
+        <Link
+          to="/"
+          className="navbar-brand"
+          onClick={() => setIsMobileOpen(false)}
+        >
           <div className="navbar-logo">
             <svg
               viewBox="0 0 40 40"
@@ -75,106 +79,88 @@ const Navbar = () => {
         </button>
       </div>
 
-      <span className="navbar-divider"></span>
+      <div className="navbar-menu">
+        <span className="navbar-divider"></span>
 
-      <ul className="navbar-nav">
-        {navLinks.map((link) => (
-          <li key={link.name}>
+        <ul className="navbar-nav">
+          {navLinks.map((link) => (
+            <li key={link.name}>
+              <Link
+                to={link.path}
+                className={`navbar-link ${isActive(link.path) ? "active" : ""}`}
+                onClick={() => setIsMobileOpen(false)}
+              >
+                {link.name}
+              </Link>
+            </li>
+          ))}
+        </ul>
+
+        <span className="navbar-divider"></span>
+
+        <div className="navbar-social">
+          <a
+            href="https://github.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="navbar-social-link"
+            aria-label="GitHub"
+          >
+            <Github size={18} />
+          </a>
+          <a
+            href="https://twitter.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="navbar-social-link"
+            aria-label="Twitter"
+          >
+            <Twitter size={18} />
+          </a>
+          <a
+            href="https://discord.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="navbar-social-link"
+            aria-label="Discord"
+          >
+            <MessageCircle size={18} />
+          </a>
+        </div>
+
+        <span className="navbar-divider"></span>
+
+        <div className="navbar-actions">
+          {isAuthenticated ? (
+            <>
+              <Link
+                to="/chat"
+                className="navbar-chat-btn"
+                onClick={() => setIsMobileOpen(false)}
+              >
+                <MessageSquare size={18} />
+                <span>Chat</span>
+              </Link>
+              <div className="navbar-user">
+                <User size={18} />
+                <span>{userName}</span>
+              </div>
+              <button onClick={handleLogout} className="navbar-logout">
+                <LogOut size={18} />
+                <span>Logout</span>
+              </button>
+            </>
+          ) : (
             <Link
-              to={link.path}
-              className={`navbar-link ${isActive(link.path) ? "active" : ""}`}
+              to="/login"
+              className="navbar-cta"
               onClick={() => setIsMobileOpen(false)}
             >
-              {link.name}
+              Get Started
             </Link>
-          </li>
-        ))}
-      </ul>
-
-      <span className="navbar-divider"></span>
-
-      <div className="navbar-social">
-        <a
-          href="https://github.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="navbar-social-link"
-          aria-label="GitHub"
-        >
-          <Github size={18} />
-        </a>
-        <a
-          href="https://twitter.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="navbar-social-link"
-          aria-label="Twitter"
-        >
-          <Twitter size={18} />
-        </a>
-        <a
-          href="https://discord.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="navbar-social-link"
-          aria-label="Discord"
-        >
-          <MessageCircle size={18} />
-        </a>
-      </div>
-
-      <span className="navbar-divider"></span>
-
-      {isAuthenticated ? (
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <Link
-            to="/chat"
-            className="navbar-chat-btn"
-            onClick={() => setIsMobileOpen(false)}
-          >
-            <MessageSquare size={18} />
-            <span>Chat</span>
-          </Link>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              padding: "8px 12px",
-              backgroundColor: "#f3f4f6",
-              borderRadius: "8px",
-            }}
-          >
-            <User size={18} />
-            <span style={{ fontWeight: "500", color: "#1f2937" }}>
-              {userName}
-            </span>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="navbar-cta"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              backgroundColor: "#ef4444",
-              border: "none",
-              cursor: "pointer",
-            }}
-          >
-            <LogOut size={18} />
-            Logout
-          </button>
+          )}
         </div>
-      ) : (
-        <Link
-          to="/login"
-          className="navbar-cta"
-          onClick={() => setIsMobileOpen(false)}
-        >
-          Get Started
-        </Link>
-      )}
+      </div>
     </nav>
   );
 };

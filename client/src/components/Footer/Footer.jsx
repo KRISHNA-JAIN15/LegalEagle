@@ -40,12 +40,9 @@ const Footer = () => {
   ];
 
   const footerLinks = [
-    { name: "Features", path: "/features" },
-    { name: "How It Works", path: "/how-it-works" },
+    { name: "Chat", path: "/chat" },
     { name: "Pricing", path: "/pricing" },
     { name: "Docs", path: "/docs" },
-    // { name: "Blog", path: "/blog" },
-    // { name: "Careers", path: "/careers" },
   ];
 
   return (
@@ -69,8 +66,8 @@ const Footer = () => {
               <br />
               Legal AI Platform
             </h3>
-            <Link to="/signup" className="btn btn-primary">
-              Book A Demo
+            <Link to="/chat" className="btn btn-primary">
+              Try It Now
             </Link>
           </div>
 
