@@ -369,13 +369,15 @@ class Database:
                 "message": "Premium user"
             }
         
-        can_chat = chat_count < FREE_CHAT_LIMIT
+        can_create_chat = chat_count < FREE_CHAT_LIMIT
         can_upload = document_count < FREE_DOCUMENT_LIMIT
         
+        # Free users can always query within their existing chats
+        # They just can't create MORE chats beyond the limit
         return {
-            "can_create_chat": can_chat,
+            "can_create_chat": can_create_chat,
             "can_upload_document": can_upload,
-            "can_query": can_chat,  # Free users can query only if they haven't exceeded chat limit
+            "can_query": True,  # Free users can always query within their chats
             "is_premium": False,
             "chat_count": chat_count,
             "document_count": document_count,

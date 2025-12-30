@@ -1398,3 +1398,140 @@
   opacity: 0.7;
   cursor: not-allowed;
 }
+
+/* ===== Tools Selector ===== */
+.tools-selector-container {
+  position: relative;
+  margin-bottom: var(--spacing-md);
+}
+
+.tools-selector-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-lg);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.tools-selector-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.tools-selector-btn.active {
+  border-color: var(--color-primary);
+  background-color: rgba(255, 77, 0, 0.05);
+  color: var(--color-primary);
+}
+
+.tools-selector-btn svg.rotate {
+  transform: rotate(180deg);
+}
+
+.tools-selector-btn svg {
+  transition: transform var(--transition-base);
+}
+
+.tools-dropdown {
+  position: absolute;
+  bottom: calc(100% + var(--spacing-sm));
+  left: 0;
+  min-width: 320px;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  z-index: 100;
+  overflow: hidden;
+  animation: slideUp 0.2s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tool-option {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  width: 100%;
+  padding: var(--spacing-md);
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.tool-option:hover {
+  background-color: var(--color-background-light);
+}
+
+.tool-option.selected {
+  background-color: rgba(255, 77, 0, 0.08);
+}
+
+.tool-option.selected svg:first-child {
+  color: var(--color-primary);
+}
+
+.tool-option > svg:first-child {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+}
+
+.tool-option-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tool-option-name {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+}
+
+.tool-option-desc {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.tool-check {
+  flex-shrink: 0;
+  color: var(--color-primary);
+}
+
+/* Message Tool Badge */
+.message-tool-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background-color: rgba(255, 77, 0, 0.15);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-primary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.message.user .message-tool-badge {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: var(--color-text-inverse);
+}

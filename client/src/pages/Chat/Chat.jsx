@@ -22,6 +22,13 @@ import {
   Edit2,
   RefreshCw,
   Crown,
+  Wrench,
+  ChevronDown,
+  Scale,
+  FileSearch,
+  BookOpen,
+  Shield,
+  Gavel,
 } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 import * as api from "../../services/api";
@@ -54,6 +61,48 @@ const Chat = () => {
   const [showChatMenu, setShowChatMenu] = useState(null);
   const [editingChatId, setEditingChatId] = useState(null);
   const [editingTitle, setEditingTitle] = useState("");
+  const [selectedTool, setSelectedTool] = useState("general");
+  const [showToolsMenu, setShowToolsMenu] = useState(false);
+
+  // Available tools
+  const tools = [
+    {
+      id: "general",
+      name: "General Q&A",
+      icon: MessageSquare,
+      description: "Ask any question about your document",
+    },
+    {
+      id: "summarize",
+      name: "Summarize",
+      icon: FileSearch,
+      description: "Get a concise summary of key points",
+    },
+    {
+      id: "clauses",
+      name: "Clause Analysis",
+      icon: BookOpen,
+      description: "Identify and explain important clauses",
+    },
+    {
+      id: "risks",
+      name: "Risk Assessment",
+      icon: Shield,
+      description: "Identify potential risks and concerns",
+    },
+    {
+      id: "obligations",
+      name: "Obligations",
+      icon: Gavel,
+      description: "List parties' obligations and duties",
+    },
+    {
+      id: "comparison",
+      name: "Legal Comparison",
+      icon: Scale,
+      description: "Compare against standard practices",
+    },
+  ];
 
   // Loading states
   const [isLoading, setIsLoading] = useState(false);
@@ -70,6 +119,21 @@ const Chat = () => {
   // Refs
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
+  const toolsMenuRef = useRef(null);
+
+  // Close tools menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        toolsMenuRef.current &&
+        !toolsMenuRef.current.contains(event.target)
+      ) {
+        setShowToolsMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // ==================== Authentication ====================
 
@@ -400,6 +464,29 @@ const Chat = () => {
 
   // ==================== Send Message ====================
 
+  // Get tool-specific prompt prefix
+  const getToolPrompt = (toolId, query) => {
+    const toolPrompts = {
+      general: query,
+      summarize: `Please provide a comprehensive summary of the document, highlighting the key points and main takeaways. Focus on: ${
+        query || "the entire document"
+      }`,
+      clauses: `Analyze and explain the important clauses in this document. Identify any unusual or noteworthy provisions. ${
+        query ? `Specifically focus on: ${query}` : ""
+      }`,
+      risks: `Conduct a risk assessment of this document. Identify potential legal risks, liabilities, and concerns that should be addressed. ${
+        query ? `Pay special attention to: ${query}` : ""
+      }`,
+      obligations: `List and explain all obligations, duties, and responsibilities of each party mentioned in this document. ${
+        query ? `Focus on: ${query}` : ""
+      }`,
+      comparison: `Compare this document against standard legal practices and templates. Highlight any deviations or unusual terms. ${
+        query ? `Specifically regarding: ${query}` : ""
+      }`,
+    };
+    return toolPrompts[toolId] || query;
+  };
+
   const sendMessage = async () => {
     if (!inputMessage.trim() || !activeChat || isSending) return;
 
@@ -411,17 +498,22 @@ const Chat = () => {
       return;
     }
 
-    const query = inputMessage.trim();
+    const userQuery = inputMessage.trim();
+    const query = getToolPrompt(selectedTool, userQuery);
     setInputMessage("");
     setIsSending(true);
     setError(null);
+
+    // Get selected tool info for display
+    const selectedToolInfo = tools.find((t) => t.id === selectedTool);
 
     // Optimistically add user message to UI
     const tempUserMessage = {
       id: `temp_${Date.now()}`,
       chat_id: activeChat,
       role: "user",
-      content: query,
+      content: userQuery,
+      tool: selectedTool !== "general" ? selectedToolInfo?.name : null,
       sources: [],
       created_at: new Date().toISOString(),
     };
@@ -443,7 +535,8 @@ const Chat = () => {
             id: `user_${response.message_id}`,
             chat_id: activeChat,
             role: "user",
-            content: query,
+            content: userQuery,
+            tool: selectedTool !== "general" ? selectedToolInfo?.name : null,
             sources: [],
             created_at: new Date().toISOString(),
           },
@@ -461,7 +554,8 @@ const Chat = () => {
       // Update chat title if it's the first message
       const currentChat = chats.find((c) => c.id === activeChat);
       if (currentChat?.title === "New Chat") {
-        const newTitle = query.slice(0, 30) + (query.length > 30 ? "..." : "");
+        const newTitle =
+          userQuery.slice(0, 30) + (userQuery.length > 30 ? "..." : "");
         try {
           await api.updateChat(activeChat, { title: newTitle });
           setChats((prev) =>
@@ -868,6 +962,12 @@ const Chat = () => {
                       }`}
                     >
                       <div className="message-content">
+                        {message.tool && (
+                          <span className="message-tool-badge">
+                            <Wrench size={12} />
+                            {message.tool}
+                          </span>
+                        )}
                         <p>{cleanMarkdown(message.content)}</p>
                         {message.sources && message.sources.length > 0 && (
                           <div className="message-sources">
@@ -914,12 +1014,70 @@ const Chat = () => {
                     <span>Uploading and processing document...</span>
                   </div>
                 )}
+
+                {/* Tools Selector */}
+                <div className="tools-selector-container" ref={toolsMenuRef}>
+                  <button
+                    className={`tools-selector-btn ${
+                      showToolsMenu ? "active" : ""
+                    }`}
+                    onClick={() => setShowToolsMenu(!showToolsMenu)}
+                  >
+                    <Wrench size={16} />
+                    <span>
+                      {tools.find((t) => t.id === selectedTool)?.name ||
+                        "Select Tool"}
+                    </span>
+                    <ChevronDown
+                      size={14}
+                      className={showToolsMenu ? "rotate" : ""}
+                    />
+                  </button>
+
+                  {showToolsMenu && (
+                    <div className="tools-dropdown">
+                      {tools.map((tool) => {
+                        const IconComponent = tool.icon;
+                        return (
+                          <button
+                            key={tool.id}
+                            className={`tool-option ${
+                              selectedTool === tool.id ? "selected" : ""
+                            }`}
+                            onClick={() => {
+                              setSelectedTool(tool.id);
+                              setShowToolsMenu(false);
+                            }}
+                          >
+                            <IconComponent size={18} />
+                            <div className="tool-option-content">
+                              <span className="tool-option-name">
+                                {tool.name}
+                              </span>
+                              <span className="tool-option-desc">
+                                {tool.description}
+                              </span>
+                            </div>
+                            {selectedTool === tool.id && (
+                              <Check size={16} className="tool-check" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
                 <div className="chat-input-wrapper">
                   <textarea
                     placeholder={
                       uploadedDocuments.length === 0
                         ? "Upload a document first to ask questions..."
-                        : "Type your legal question..."
+                        : selectedTool === "general"
+                        ? "Type your legal question..."
+                        : `Ask about ${tools
+                            .find((t) => t.id === selectedTool)
+                            ?.name.toLowerCase()}...`
                     }
                     value={inputMessage}
                     onChange={(e) => setInputMessage(e.target.value)}

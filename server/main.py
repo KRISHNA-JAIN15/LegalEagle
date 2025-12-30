@@ -649,10 +649,15 @@ async def create_payment_order(request: CreateOrderRequest):
         await db.get_or_create_user(request.user_id)
         
         # Create Razorpay order
+        # Receipt must be <= 40 chars, so use short format
+        short_user_id = str(request.user_id)[:8]  # First 8 chars of UUID
+        timestamp = int(datetime.utcnow().timestamp())
+        receipt = f"ord_{short_user_id}_{timestamp}"[:40]  # Ensure max 40 chars
+        
         order_data = {
             "amount": PREMIUM_PRICE_INR,
             "currency": "INR",
-            "receipt": f"order_{request.user_id}_{int(datetime.utcnow().timestamp())}",
+            "receipt": receipt,
             "notes": {
                 "user_id": request.user_id,
                 "product": "LegalEagle Premium",

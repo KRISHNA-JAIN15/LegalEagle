@@ -16,6 +16,7 @@ import {
 import { supabase } from "../../supabaseClient";
 import * as api from "../../services/api";
 import "./Pricing.css";
+import Navbar from "../../components/Navbar";
 
 const Pricing = () => {
   const navigate = useNavigate();
@@ -196,6 +197,7 @@ const Pricing = () => {
 
   return (
     <div className="pricing-page">
+      <Navbar />
       {/* Toast Notification */}
       {toast && (
         <div className={`toast toast-${toast.type}`}>
@@ -205,26 +207,6 @@ const Pricing = () => {
           </button>
         </div>
       )}
-
-      {/* Header */}
-      <header className="pricing-header">
-        <Link to="/chat" className="back-link">
-          <ArrowLeft size={20} />
-          <span>Back to Chat</span>
-        </Link>
-        <div className="pricing-brand">
-          <svg
-            viewBox="0 0 40 40"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            className="pricing-logo"
-          >
-            <path d="M20 4L4 36h32L20 4z" fill="#ff4d00" />
-            <path d="M20 12L10 32h20L20 12z" fill="#fff" />
-          </svg>
-          <span>LegalEagle</span>
-        </div>
-      </header>
 
       {/* Main Content */}
       <main className="pricing-content">
