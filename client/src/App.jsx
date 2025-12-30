@@ -49,7 +49,7 @@ const AuthHandler = () => {
 
       if (accessToken && type === "magiclink") {
         console.log("Magic link detected, processing authentication...");
-        
+
         // Set the session using the tokens from URL
         const { data, error } = await supabase.auth.setSession({
           access_token: accessToken,
@@ -69,7 +69,10 @@ const AuthHandler = () => {
 
           // Store user metadata if available
           if (data.session.user.user_metadata?.name) {
-            localStorage.setItem("userName", data.session.user.user_metadata.name);
+            localStorage.setItem(
+              "userName",
+              data.session.user.user_metadata.name
+            );
           } else {
             // Use email as fallback for name
             const name = data.session.user.email.split("@")[0];
@@ -91,7 +94,7 @@ const AuthHandler = () => {
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log("Auth state changed:", event);
-        
+
         if (event === "SIGNED_IN" && session) {
           // Store user data in localStorage
           localStorage.setItem("userToken", session.access_token);
