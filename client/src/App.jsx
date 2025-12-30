@@ -43,29 +43,41 @@ const AuthHandler = () => {
     const handleAuthCallback = async () => {
       // Check if there's a hash fragment with access_token
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      const accessToken = hashParams.get('access_token');
-      
-      if (accessToken) {
-        // Get the current session
-        const { data: { session }, error } = await supabase.auth.getSession();
+      const accessToken = hashParams.get("access_token");
+      const refreshToken = hashParams.get("refresh_token");
+      const type = hashParams.get("type");
+
+      if (accessToken && type === "magiclink") {
+        console.log("Magic link detected, processing authentication...");
         
-        if (session && !error) {
+        // Set the session using the tokens from URL
+        const { data, error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+
+        if (error) {
+          console.error("Error setting session:", error);
+          alert("Authentication failed. Please try again.");
+          navigate("/login");
+        } else if (data.session) {
+          console.log("Session established successfully");
           // Store user data in localStorage
-          localStorage.setItem("userToken", session.access_token);
-          localStorage.setItem("userEmail", session.user.email);
-          localStorage.setItem("userId", session.user.id);
+          localStorage.setItem("userToken", data.session.access_token);
+          localStorage.setItem("userEmail", data.session.user.email);
+          localStorage.setItem("userId", data.session.user.id);
 
           // Store user metadata if available
-          if (session.user.user_metadata?.name) {
-            localStorage.setItem("userName", session.user.user_metadata.name);
+          if (data.session.user.user_metadata?.name) {
+            localStorage.setItem("userName", data.session.user.user_metadata.name);
           } else {
             // Use email as fallback for name
-            const name = session.user.email.split("@")[0];
+            const name = data.session.user.email.split("@")[0];
             localStorage.setItem("userName", name);
           }
 
           // Clear the hash from URL
-          window.history.replaceState(null, '', window.location.pathname);
+          window.history.replaceState(null, "", window.location.pathname);
 
           // Navigate to dashboard
           navigate("/dashboard");
@@ -78,6 +90,8 @@ const AuthHandler = () => {
     // Listen for auth state changes
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log("Auth state changed:", event);
+        
         if (event === "SIGNED_IN" && session) {
           // Store user data in localStorage
           localStorage.setItem("userToken", session.access_token);
@@ -94,7 +108,10 @@ const AuthHandler = () => {
           }
 
           // Navigate to dashboard if not already there
-          if (location.pathname !== "/dashboard" && location.pathname !== "/chat") {
+          if (
+            location.pathname !== "/dashboard" &&
+            location.pathname !== "/chat"
+          ) {
             navigate("/dashboard");
           }
         } else if (event === "SIGNED_OUT") {
@@ -103,7 +120,7 @@ const AuthHandler = () => {
           localStorage.removeItem("userEmail");
           localStorage.removeItem("userId");
           localStorage.removeItem("userName");
-          
+
           // Navigate to login
           navigate("/login");
         }
