@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -15,6 +15,10 @@ import { Pricing } from "./pages/Pricing";
 import Docs from "./pages/Docs";
 import { supabase } from "./supabaseClient";
 import "./styles/global.css";
+
+// Capture the hash IMMEDIATELY before React Router or anything else clears it
+const initialHash = window.location.hash;
+console.log("Initial hash captured on page load:", initialHash);
 
 // Layout component that conditionally renders Navbar and Footer
 const Layout = ({ children }) => {
@@ -37,15 +41,22 @@ const Layout = ({ children }) => {
 const AuthHandler = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const processedRef = useRef(false);
 
   useEffect(() => {
+    // Prevent processing the same auth callback multiple times
+    if (processedRef.current) {
+      console.log("Auth callback already processed, skipping");
+      return;
+    }
+
     // Handle the auth callback from magic link
     const handleAuthCallback = async () => {
-      // Check if there's a hash fragment with access_token
-      const hash = window.location.hash;
-      console.log("Current URL hash:", hash);
-      
-      if (!hash || !hash.includes('access_token')) {
+      // Use the hash captured on initial page load
+      const hash = initialHash;
+      console.log("Processing hash in useEffect:", hash);
+
+      if (!hash || !hash.includes("access_token")) {
         console.log("No access token in URL hash");
         return;
       }
@@ -55,10 +66,10 @@ const AuthHandler = () => {
       const refreshToken = hashParams.get("refresh_token");
       const type = hashParams.get("type");
 
-      console.log("Parsed tokens:", { 
-        hasAccessToken: !!accessToken, 
-        hasRefreshToken: !!refreshToken, 
-        type 
+      console.log("Parsed tokens:", {
+        hasAccessToken: !!accessToken,
+        hasRefreshToken: !!refreshToken,
+        type,
       });
 
       if (accessToken && refreshToken) {
@@ -79,7 +90,12 @@ const AuthHandler = () => {
           }
 
           if (data.session) {
-            console.log("Session established successfully", data.session.user.email);
+            console.log(
+              "Session established successfully",
+              data.session.user.email
+            );
+            processedRef.current = true;
+            
             // Store user data in localStorage
             localStorage.setItem("userToken", data.session.access_token);
             localStorage.setItem("userEmail", data.session.user.email);
