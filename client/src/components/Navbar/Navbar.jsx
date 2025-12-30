@@ -156,7 +156,7 @@ const Navbar = () => {
               className="navbar-cta"
               onClick={() => setIsMobileOpen(false)}
             >
-              Get Started
+              Start
             </Link>
           )}
         </div>
