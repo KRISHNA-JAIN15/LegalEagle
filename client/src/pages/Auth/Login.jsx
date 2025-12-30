@@ -15,35 +15,7 @@ const Login = () => {
     rememberMe: false,
   });
 
-  useEffect(() => {
-    // Listen for auth state changes
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === "SIGNED_IN" && session) {
-          // Store user data in localStorage
-          localStorage.setItem("userToken", session.access_token);
-          localStorage.setItem("userEmail", session.user.email);
-          localStorage.setItem("userId", session.user.id);
-
-          // Store user metadata if available
-          if (session.user.user_metadata?.name) {
-            localStorage.setItem("userName", session.user.user_metadata.name);
-          } else {
-            // Use email as fallback for name
-            const name = session.user.email.split("@")[0];
-            localStorage.setItem("userName", name);
-          }
-
-          // Navigate to dashboard
-          navigate("/dashboard");
-        }
-      }
-    );
-
-    return () => {
-      authListener?.subscription?.unsubscribe();
-    };
-  }, [navigate]);
+  // Auth state changes are now handled globally in App.jsx
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -61,7 +33,7 @@ const Login = () => {
     const { error } = await supabase.auth.signInWithOtp({
       email: formData.email,
       options: {
-        emailRedirectTo: `${window.location.origin}/dashboard`,
+        emailRedirectTo: window.location.origin,
       },
     });
 
