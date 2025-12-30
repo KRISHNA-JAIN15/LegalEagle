@@ -9,6 +9,7 @@ import Footer from "./components/Footer";
 import Home from "./pages/Home";
 import { Login, Signup } from "./pages/Auth";
 import { Chat } from "./pages/Chat";
+import Docs from "./pages/Docs";
 import "./styles/global.css";
 
 // Layout component that conditionally renders Navbar and Footer
@@ -41,7 +42,7 @@ function App() {
           <Route path="/features" element={<Home />} />
           <Route path="/how-it-works" element={<Home />} />
           <Route path="/pricing" element={<Home />} />
-          <Route path="/docs" element={<Home />} />
+          <Route path="/docs" element={<Docs />} />
           <Route path="/dashboard" element={<Chat />} />
         </Routes>
       </Layout>

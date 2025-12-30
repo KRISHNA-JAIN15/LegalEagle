@@ -43,10 +43,8 @@ const Navbar = () => {
   };
 
   const navLinks = [
-    { name: "Features", path: "/features" },
-    { name: "How It Works", path: "/how-it-works" },
-    { name: "Pricing", path: "/pricing" },
     { name: "Docs", path: "/docs" },
+    { name: "Pricing", path: "/pricing" },
   ];
 
   const isActive = (path) => location.pathname === path;

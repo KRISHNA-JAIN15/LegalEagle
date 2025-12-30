@@ -54,8 +54,7 @@
 
 .stat-label {
   font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  opacity: 0.9;
+  font-weight: var(--font-weight-black);
   margin-bottom: var(--spacing-md);
   position: relative;
   z-index: 1;
