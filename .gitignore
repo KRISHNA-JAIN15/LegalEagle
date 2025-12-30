@@ -1,6 +1,31 @@
+# Environment files (never commit these!)
 server/.env
+client/.env
+.env
+*.env.local
+
 # ignore the server virtual environment
 server/venv/
 server/data/*
 server/__pycache__
 server/temp_uploads
+
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+
+# Build outputs
+dist/
+build/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db

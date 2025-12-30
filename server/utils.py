@@ -1,4 +1,5 @@
 import os
+import tempfile
 from typing import List
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -6,15 +7,11 @@ from langchain_cohere import CohereEmbeddings
 from langchain_pinecone import PineconeVectorStore
 
 from config import (
-    TEMP_FOLDER,
     CHUNK_SIZE,
     CHUNK_OVERLAP,
     EMBEDDING_MODEL,
     PINECONE_INDEX_NAME
 )
-
-# Create temp folder if it doesn't exist
-os.makedirs(TEMP_FOLDER, exist_ok=True)
 
 
 def process_and_store_document(
@@ -33,11 +30,10 @@ def process_and_store_document(
     Returns:
         Number of chunks created
     """
-    file_path = os.path.join(TEMP_FOLDER, filename)
-    
-    # 1. Save bytes to a temp file
-    with open(file_path, "wb") as f:
-        f.write(file_content)
+    # 1. Save bytes to a temp file (auto-deleted on close)
+    with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as tmp:
+        tmp.write(file_content)
+        file_path = tmp.name
         
     try:
         # 2. Load PDF

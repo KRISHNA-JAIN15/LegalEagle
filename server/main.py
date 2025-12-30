@@ -10,11 +10,14 @@ from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import (
-    TEMP_FOLDER, 
     RAZORPAY_KEY_ID, 
     RAZORPAY_KEY_SECRET,
     PREMIUM_PRICE_INR,
-    PREMIUM_QUERIES_LIMIT
+    PREMIUM_QUERIES_LIMIT,
+    CORS_ORIGINS,
+    PORT,
+    HOST,
+    DEBUG
 )
 from database import db
 from models import (
@@ -59,7 +62,6 @@ async def lifespan(app: FastAPI):
     """Manage application lifecycle"""
     # Startup
     await db.connect()
-    os.makedirs(TEMP_FOLDER, exist_ok=True)
     print("🦅 LegalEagle API is ready!")
     
     yield
@@ -81,7 +83,7 @@ app = FastAPI(
 # CORS Configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure for production
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -762,4 +764,9 @@ async def get_payment_history(user_id: str = Query(..., description="User ID")):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(
+        "main:app",
+        host=HOST,
+        port=PORT,
+        reload=DEBUG
+    )
