@@ -675,18 +675,20 @@ const Chat = () => {
                   )}
                 </div>
                 <div className="chat-header-actions">
-                  <button
-                    className="header-action-btn"
-                    onClick={() => fileInputRef.current?.click()}
-                    title="Upload Document"
-                    disabled={isUploading}
-                  >
-                    {isUploading ? (
-                      <Loader2 size={20} className="spin" />
-                    ) : (
-                      <Paperclip size={20} />
-                    )}
-                  </button>
+                  {uploadedDocuments.length === 0 && (
+                    <button
+                      className="header-action-btn"
+                      onClick={() => fileInputRef.current?.click()}
+                      title="Upload Document"
+                      disabled={isUploading}
+                    >
+                      {isUploading ? (
+                        <Loader2 size={20} className="spin" />
+                      ) : (
+                        <Paperclip size={20} />
+                      )}
+                    </button>
+                  )}
                   <input
                     type="file"
                     ref={fileInputRef}
@@ -703,20 +705,15 @@ const Chat = () => {
                   {uploadedDocuments.map((doc) => (
                     <div key={doc.id} className="document-banner">
                       <div className="document-info">
-                        <FileText size={20} />
-                        <div className="document-details">
-                          <span className="document-name">{doc.filename}</span>
-                          <span className="document-size">
-                            {doc.num_chunks} chunks indexed
-                          </span>
-                        </div>
+                        <FileText size={16} />
+                        <span className="document-name">{doc.filename}</span>
                       </div>
                       <button
                         className="remove-document"
                         onClick={() => removeDocument(doc.id)}
                         title="Remove from view"
                       >
-                        <X size={18} />
+                        <X size={16} />
                       </button>
                     </div>
                   ))}
