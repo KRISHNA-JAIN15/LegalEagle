@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
   Plus,
@@ -20,57 +20,80 @@ import {
   LogOut,
   User,
   Edit2,
+  RefreshCw,
 } from "lucide-react";
 import { supabase } from "../../supabaseClient";
+import * as api from "../../services/api";
 import "./Chat.css";
-
-// Helper function to load initial state from localStorage
-const loadInitialState = () => {
-  const savedChats = localStorage.getItem("legalEagleChats");
-  if (savedChats) {
-    try {
-      return JSON.parse(savedChats);
-    } catch {
-      return [];
-    }
-  }
-  return [];
-};
 
 const Chat = () => {
   const navigate = useNavigate();
-  const [chats, setChats] = useState(loadInitialState);
-  const [activeChat, setActiveChat] = useState(() => {
-    const initialChats = loadInitialState();
-    return initialChats.length > 0 ? initialChats[0].id : null;
-  });
-  const [messages, setMessages] = useState(() => {
-    const initialChats = loadInitialState();
-    return initialChats.length > 0 ? initialChats[0].messages || [] : [];
-  });
+
+  // User state
+  const [userId, setUserId] = useState(
+    () => localStorage.getItem("userId") || null
+  );
+  const [userName, setUserName] = useState(
+    () => localStorage.getItem("userName") || "User"
+  );
+
+  // Chat state
+  const [chats, setChats] = useState([]);
+  const [activeChat, setActiveChat] = useState(null);
+  const [activeChatData, setActiveChatData] = useState(null);
+  const [messages, setMessages] = useState([]);
+
+  // UI state
   const [inputMessage, setInputMessage] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
-  const [uploadedFile, setUploadedFile] = useState(() => {
-    const initialChats = loadInitialState();
-    return initialChats.length > 0 ? initialChats[0].document || null : null;
-  });
   const [showChatMenu, setShowChatMenu] = useState(null);
-  const [isUploading, setIsUploading] = useState(false);
   const [editingChatId, setEditingChatId] = useState(null);
   const [editingTitle, setEditingTitle] = useState("");
-  const [userName] = useState(() => localStorage.getItem("userName") || "User");
+
+  // Loading states
+  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingChats, setIsLoadingChats] = useState(true);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+
+  // Document state
+  const [uploadedDocuments, setUploadedDocuments] = useState([]);
+
+  // Error state
+  const [error, setError] = useState(null);
+
+  // Refs
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  // Check authentication on mount
+  // ==================== Authentication ====================
+
   useEffect(() => {
-    const token = localStorage.getItem("userToken");
-    if (!token) {
-      navigate("/login");
-    }
-  }, [navigate]);
+    const checkAuth = async () => {
+      const token = localStorage.getItem("userToken");
+      if (!token) {
+        navigate("/login");
+        return;
+      }
+
+      // Get user ID from Supabase session
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (session?.user) {
+        setUserId(session.user.id);
+        localStorage.setItem("userId", session.user.id);
+      } else if (!userId) {
+        // Fallback: generate a user ID if not available
+        const generatedId = `user_${Date.now()}`;
+        setUserId(generatedId);
+        localStorage.setItem("userId", generatedId);
+      }
+    };
+
+    checkAuth();
+  }, [navigate, userId]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -81,16 +104,38 @@ const Chat = () => {
     navigate("/");
   };
 
-  // Save chats to localStorage whenever they change
-  useEffect(() => {
-    if (chats.length > 0) {
-      localStorage.setItem("legalEagleChats", JSON.stringify(chats));
-    } else {
-      localStorage.removeItem("legalEagleChats");
-    }
-  }, [chats]);
+  // ==================== Load Chats ====================
 
-  // Scroll to bottom when messages change
+  const loadChats = useCallback(async () => {
+    if (!userId) return;
+
+    setIsLoadingChats(true);
+    setError(null);
+
+    try {
+      const response = await api.getUserChats(userId);
+      setChats(response.chats || []);
+
+      // Select first chat if none is active
+      if (!activeChat && response.chats?.length > 0) {
+        selectChat(response.chats[0].id);
+      }
+    } catch (err) {
+      console.error("Failed to load chats:", err);
+      setError("Failed to load chats. Please try again.");
+    } finally {
+      setIsLoadingChats(false);
+    }
+  }, [userId, activeChat]);
+
+  useEffect(() => {
+    if (userId) {
+      loadChats();
+    }
+  }, [userId, loadChats]);
+
+  // ==================== Auto-scroll Messages ====================
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -99,58 +144,90 @@ const Chat = () => {
     scrollToBottom();
   }, [messages]);
 
-  const generateChatId = () => {
-    return `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  // ==================== Chat Operations ====================
+
+  const createNewChat = async () => {
+    if (!userId) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await api.createChat(userId, "New Chat");
+      const newChat = response;
+
+      setChats((prev) => [newChat, ...prev]);
+      setActiveChat(newChat.id);
+      setActiveChatData(newChat);
+      setMessages([]);
+      setUploadedDocuments([]);
+      setShowChatMenu(null);
+    } catch (err) {
+      console.error("Failed to create chat:", err);
+      setError("Failed to create new chat. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const createNewChat = () => {
-    const newChat = {
-      id: generateChatId(),
-      title: "New Chat",
-      messages: [],
-      document: null,
-      isPinned: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    setChats((prev) => [newChat, ...prev]);
-    setActiveChat(newChat.id);
-    setMessages([]);
-    setUploadedFile(null);
-    setShowChatMenu(null);
-  };
+  const selectChat = async (chatId) => {
+    if (chatId === activeChat) return;
 
-  const selectChat = (chatId) => {
-    const chat = chats.find((c) => c.id === chatId);
-    if (chat) {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Load chat history from backend
+      const response = await api.getChatHistory(chatId);
+
       setActiveChat(chatId);
-      setMessages(chat.messages || []);
-      setUploadedFile(chat.document || null);
+      setActiveChatData(response.chat);
+      setMessages(response.messages || []);
+
+      // Load documents for this chat
+      const docsResponse = await api.getChatDocuments(chatId);
+      setUploadedDocuments(docsResponse.documents || []);
+    } catch (err) {
+      console.error("Failed to load chat:", err);
+      setError("Failed to load chat history.");
+    } finally {
+      setIsLoading(false);
     }
+
     setShowChatMenu(null);
   };
 
-  const deleteChat = (chatId, e) => {
+  const deleteChatHandler = async (chatId, e) => {
     e.stopPropagation();
-    const updatedChats = chats.filter((c) => c.id !== chatId);
-    setChats(updatedChats);
 
-    if (activeChat === chatId) {
-      if (updatedChats.length > 0) {
-        setActiveChat(updatedChats[0].id);
-        setMessages(updatedChats[0].messages || []);
-        setUploadedFile(updatedChats[0].document || null);
-      } else {
-        setActiveChat(null);
-        setMessages([]);
-        setUploadedFile(null);
+    try {
+      await api.deleteChat(chatId);
+
+      const updatedChats = chats.filter((c) => c.id !== chatId);
+      setChats(updatedChats);
+
+      if (activeChat === chatId) {
+        if (updatedChats.length > 0) {
+          selectChat(updatedChats[0].id);
+        } else {
+          setActiveChat(null);
+          setActiveChatData(null);
+          setMessages([]);
+          setUploadedDocuments([]);
+        }
       }
+    } catch (err) {
+      console.error("Failed to delete chat:", err);
+      setError("Failed to delete chat.");
     }
+
     setShowChatMenu(null);
   };
 
   const togglePinChat = (chatId, e) => {
     e.stopPropagation();
+    // Note: Pin functionality is client-side only for now
+    // You could extend the backend to support pinning
     setChats((prev) =>
       prev.map((chat) =>
         chat.id === chatId ? { ...chat, isPinned: !chat.isPinned } : chat
@@ -166,19 +243,27 @@ const Chat = () => {
     setShowChatMenu(null);
   };
 
-  const saveRename = (chatId) => {
+  const saveRename = async (chatId) => {
     if (editingTitle.trim()) {
-      setChats((prev) =>
-        prev.map((chat) =>
-          chat.id === chatId
-            ? {
-                ...chat,
-                title: editingTitle.trim(),
-                updatedAt: new Date().toISOString(),
-              }
-            : chat
-        )
-      );
+      try {
+        await api.updateChat(chatId, { title: editingTitle.trim() });
+
+        setChats((prev) =>
+          prev.map((chat) =>
+            chat.id === chatId ? { ...chat, title: editingTitle.trim() } : chat
+          )
+        );
+
+        if (activeChat === chatId) {
+          setActiveChatData((prev) => ({
+            ...prev,
+            title: editingTitle.trim(),
+          }));
+        }
+      } catch (err) {
+        console.error("Failed to rename chat:", err);
+        setError("Failed to rename chat.");
+      }
     }
     setEditingChatId(null);
     setEditingTitle("");
@@ -197,144 +282,141 @@ const Chat = () => {
     }
   };
 
+  // ==================== File Upload ====================
+
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
-    if (!file) return;
+    if (!file || !activeChat) return;
 
-    // Check if it's a PDF or document
-    const allowedTypes = [
-      "application/pdf",
-      "application/msword",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      "text/plain",
-    ];
-
-    if (!allowedTypes.includes(file.type)) {
-      alert("Please upload a PDF, Word document, or text file.");
+    // Check if it's a PDF
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      setError("Only PDF files are allowed. Please upload a PDF document.");
       return;
     }
 
-    // Check file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      alert("File size must be less than 10MB.");
+    // Check file size (max 50MB to match backend)
+    if (file.size > 50 * 1024 * 1024) {
+      setError("File size must be less than 50MB.");
       return;
     }
 
     setIsUploading(true);
+    setError(null);
 
-    // Simulate upload delay
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    try {
+      const response = await api.uploadDocument(activeChat, file);
 
-    const fileData = {
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      uploadedAt: new Date().toISOString(),
-    };
-
-    setUploadedFile(fileData);
-
-    // Update the chat with the document
-    if (activeChat) {
-      setChats((prev) =>
-        prev.map((chat) =>
-          chat.id === activeChat
-            ? {
-                ...chat,
-                document: fileData,
-                updatedAt: new Date().toISOString(),
-              }
-            : chat
-        )
-      );
-    }
-
-    setIsUploading(false);
-
-    // Clear file input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  };
-
-  const removeDocument = () => {
-    setUploadedFile(null);
-    if (activeChat) {
-      setChats((prev) =>
-        prev.map((chat) =>
-          chat.id === activeChat
-            ? { ...chat, document: null, updatedAt: new Date().toISOString() }
-            : chat
-        )
-      );
-    }
-  };
-
-  const generateMessageId = () => {
-    return `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  };
-
-  const sendMessage = async () => {
-    if (!inputMessage.trim() || !activeChat) return;
-
-    const userMessage = {
-      id: generateMessageId(),
-      role: "user",
-      content: inputMessage.trim(),
-      timestamp: new Date().toISOString(),
-    };
-
-    const updatedMessages = [...messages, userMessage];
-    setMessages(updatedMessages);
-    setInputMessage("");
-    setIsLoading(true);
-
-    // Update chat title if it's the first message
-    const currentChat = chats.find((c) => c.id === activeChat);
-    const isFirstMessage = currentChat?.messages?.length === 0;
-    const messageText = inputMessage.trim();
-
-    // Simulate AI response (replace with actual API call)
-    setTimeout(() => {
-      const aiResponse = {
-        id: generateMessageId(),
-        role: "assistant",
-        content: generateMockResponse(),
-        timestamp: new Date().toISOString(),
+      // Add to uploaded documents list
+      const newDoc = {
+        id: response.document_id,
+        filename: response.filename,
+        num_chunks: response.chunks,
+        uploaded_at: new Date().toISOString(),
       };
 
-      const finalMessages = [...updatedMessages, aiResponse];
-      setMessages(finalMessages);
+      setUploadedDocuments((prev) => [...prev, newDoc]);
 
-      // Update chat in state
+      // Update chat in list to show it has a document
       setChats((prev) =>
         prev.map((chat) =>
-          chat.id === activeChat
-            ? {
-                ...chat,
-                messages: finalMessages,
-                title: isFirstMessage
-                  ? messageText.slice(0, 30) +
-                    (messageText.length > 30 ? "..." : "")
-                  : chat.title,
-                updatedAt: new Date().toISOString(),
-              }
-            : chat
+          chat.id === activeChat ? { ...chat, hasDocument: true } : chat
         )
       );
-
-      setIsLoading(false);
-    }, 1500);
+    } catch (err) {
+      console.error("Upload failed:", err);
+      setError(err.message || "Failed to upload document. Please try again.");
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
   };
 
-  const generateMockResponse = () => {
-    const responses = [
-      "Based on my analysis of legal documents, I can provide the following insights regarding your query. The key legal principles that apply here include...",
-      "After reviewing the relevant legal framework, I've identified several important points to consider. First, the applicable statutes suggest...",
-      "Your question touches on an important area of law. According to established legal precedents and current regulations...",
-      "I've analyzed this from a legal perspective. Here's what you should know about this matter...",
-    ];
-    return responses[Math.floor(Math.random() * responses.length)];
+  const removeDocument = async (docId) => {
+    // Note: The backend doesn't have a single document delete endpoint
+    // Documents are deleted when the chat is deleted
+    // For now, we'll just remove it from the UI
+    setUploadedDocuments((prev) => prev.filter((doc) => doc.id !== docId));
+  };
+
+  // ==================== Send Message ====================
+
+  const sendMessage = async () => {
+    if (!inputMessage.trim() || !activeChat || isSending) return;
+
+    const query = inputMessage.trim();
+    setInputMessage("");
+    setIsSending(true);
+    setError(null);
+
+    // Optimistically add user message to UI
+    const tempUserMessage = {
+      id: `temp_${Date.now()}`,
+      chat_id: activeChat,
+      role: "user",
+      content: query,
+      sources: [],
+      created_at: new Date().toISOString(),
+    };
+
+    setMessages((prev) => [...prev, tempUserMessage]);
+
+    try {
+      const response = await api.askQuestion(activeChat, query);
+
+      // Replace temp message with real one and add assistant response
+      setMessages((prev) => {
+        // Remove the temp message
+        const filtered = prev.filter((m) => m.id !== tempUserMessage.id);
+
+        // Add the real user message and assistant response
+        return [
+          ...filtered,
+          {
+            id: `user_${response.message_id}`,
+            chat_id: activeChat,
+            role: "user",
+            content: query,
+            sources: [],
+            created_at: new Date().toISOString(),
+          },
+          {
+            id: response.message_id,
+            chat_id: activeChat,
+            role: "assistant",
+            content: response.answer,
+            sources: response.sources || [],
+            created_at: new Date().toISOString(),
+          },
+        ];
+      });
+
+      // Update chat title if it's the first message
+      const currentChat = chats.find((c) => c.id === activeChat);
+      if (currentChat?.title === "New Chat") {
+        const newTitle = query.slice(0, 30) + (query.length > 30 ? "..." : "");
+        try {
+          await api.updateChat(activeChat, { title: newTitle });
+          setChats((prev) =>
+            prev.map((chat) =>
+              chat.id === activeChat ? { ...chat, title: newTitle } : chat
+            )
+          );
+          setActiveChatData((prev) => ({ ...prev, title: newTitle }));
+        } catch (err) {
+          console.error("Failed to update chat title:", err);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to send message:", err);
+      setError(err.message || "Failed to get response. Please try again.");
+
+      // Remove the temp message on error
+      setMessages((prev) => prev.filter((m) => m.id !== tempUserMessage.id));
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const handleKeyPress = (e) => {
@@ -344,7 +426,10 @@ const Chat = () => {
     }
   };
 
+  // ==================== Utility Functions ====================
+
   const formatFileSize = (bytes) => {
+    if (!bytes) return "0 B";
     if (bytes < 1024) return bytes + " B";
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
     return (bytes / (1024 * 1024)).toFixed(1) + " MB";
@@ -370,7 +455,8 @@ const Chat = () => {
     }
   };
 
-  // Filter and sort chats
+  // ==================== Filter and Sort Chats ====================
+
   const filteredChats = chats
     .filter((chat) =>
       chat.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -378,14 +464,30 @@ const Chat = () => {
     .sort((a, b) => {
       if (a.isPinned && !b.isPinned) return -1;
       if (!a.isPinned && b.isPinned) return 1;
-      return new Date(b.updatedAt) - new Date(a.updatedAt);
+      return (
+        new Date(b.updated_at || b.created_at) -
+        new Date(a.updated_at || a.created_at)
+      );
     });
 
   const pinnedChats = filteredChats.filter((c) => c.isPinned);
   const regularChats = filteredChats.filter((c) => !c.isPinned);
 
+  // ==================== Render ====================
+
   return (
     <div className="chat-page">
+      {/* Error Banner */}
+      {error && (
+        <div className="error-banner">
+          <AlertCircle size={18} />
+          <span>{error}</span>
+          <button onClick={() => setError(null)}>
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
       {/* Top Navigation Bar */}
       <nav className="chat-navbar">
         <div className="chat-navbar-left">
@@ -423,8 +525,16 @@ const Chat = () => {
         <aside className={`chat-sidebar ${isSidebarOpen ? "open" : "closed"}`}>
           <div className="sidebar-header">
             <h2 className="sidebar-title">Chats</h2>
-            <button className="new-chat-btn" onClick={createNewChat}>
-              <Plus size={20} />
+            <button
+              className="new-chat-btn"
+              onClick={createNewChat}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <Loader2 size={20} className="spin" />
+              ) : (
+                <Plus size={20} />
+              )}
               <span>New Chat</span>
             </button>
           </div>
@@ -441,82 +551,99 @@ const Chat = () => {
           </div>
 
           <div className="chat-list">
-            {pinnedChats.length > 0 && (
-              <div className="chat-group">
-                <div className="chat-group-header">
-                  <Pin size={14} />
-                  <span>Pinned</span>
-                </div>
-                {pinnedChats.map((chat) => (
-                  <ChatItem
-                    key={chat.id}
-                    chat={chat}
-                    isActive={activeChat === chat.id}
-                    onClick={() => selectChat(chat.id)}
-                    onDelete={(e) => deleteChat(chat.id, e)}
-                    onPin={(e) => togglePinChat(chat.id, e)}
-                    onRename={(e) => startRenameChat(chat.id, chat.title, e)}
-                    showMenu={showChatMenu === chat.id}
-                    onMenuToggle={(e) => {
-                      e.stopPropagation();
-                      setShowChatMenu(
-                        showChatMenu === chat.id ? null : chat.id
-                      );
-                    }}
-                    formatDate={formatDate}
-                    isEditing={editingChatId === chat.id}
-                    editingTitle={editingTitle}
-                    onEditingTitleChange={setEditingTitle}
-                    onSaveRename={() => saveRename(chat.id)}
-                    onCancelRename={cancelRename}
-                    onRenameKeyPress={(e) => handleRenameKeyPress(e, chat.id)}
-                  />
-                ))}
+            {isLoadingChats ? (
+              <div className="loading-chats">
+                <Loader2 size={24} className="spin" />
+                <span>Loading chats...</span>
               </div>
-            )}
-
-            {regularChats.length > 0 && (
-              <div className="chat-group">
+            ) : (
+              <>
                 {pinnedChats.length > 0 && (
-                  <div className="chat-group-header">
-                    <MessageSquare size={14} />
-                    <span>Recent</span>
+                  <div className="chat-group">
+                    <div className="chat-group-header">
+                      <Pin size={14} />
+                      <span>Pinned</span>
+                    </div>
+                    {pinnedChats.map((chat) => (
+                      <ChatItem
+                        key={chat.id}
+                        chat={chat}
+                        isActive={activeChat === chat.id}
+                        onClick={() => selectChat(chat.id)}
+                        onDelete={(e) => deleteChatHandler(chat.id, e)}
+                        onPin={(e) => togglePinChat(chat.id, e)}
+                        onRename={(e) =>
+                          startRenameChat(chat.id, chat.title, e)
+                        }
+                        showMenu={showChatMenu === chat.id}
+                        onMenuToggle={(e) => {
+                          e.stopPropagation();
+                          setShowChatMenu(
+                            showChatMenu === chat.id ? null : chat.id
+                          );
+                        }}
+                        formatDate={formatDate}
+                        isEditing={editingChatId === chat.id}
+                        editingTitle={editingTitle}
+                        onEditingTitleChange={setEditingTitle}
+                        onSaveRename={() => saveRename(chat.id)}
+                        onCancelRename={cancelRename}
+                        onRenameKeyPress={(e) =>
+                          handleRenameKeyPress(e, chat.id)
+                        }
+                      />
+                    ))}
                   </div>
                 )}
-                {regularChats.map((chat) => (
-                  <ChatItem
-                    key={chat.id}
-                    chat={chat}
-                    isActive={activeChat === chat.id}
-                    onClick={() => selectChat(chat.id)}
-                    onDelete={(e) => deleteChat(chat.id, e)}
-                    onPin={(e) => togglePinChat(chat.id, e)}
-                    onRename={(e) => startRenameChat(chat.id, chat.title, e)}
-                    showMenu={showChatMenu === chat.id}
-                    onMenuToggle={(e) => {
-                      e.stopPropagation();
-                      setShowChatMenu(
-                        showChatMenu === chat.id ? null : chat.id
-                      );
-                    }}
-                    formatDate={formatDate}
-                    isEditing={editingChatId === chat.id}
-                    editingTitle={editingTitle}
-                    onEditingTitleChange={setEditingTitle}
-                    onSaveRename={() => saveRename(chat.id)}
-                    onCancelRename={cancelRename}
-                    onRenameKeyPress={(e) => handleRenameKeyPress(e, chat.id)}
-                  />
-                ))}
-              </div>
-            )}
 
-            {filteredChats.length === 0 && (
-              <div className="empty-chats">
-                <MessageSquare size={48} strokeWidth={1} />
-                <p>No chats yet</p>
-                <span>Start a new conversation</span>
-              </div>
+                {regularChats.length > 0 && (
+                  <div className="chat-group">
+                    {pinnedChats.length > 0 && (
+                      <div className="chat-group-header">
+                        <MessageSquare size={14} />
+                        <span>Recent</span>
+                      </div>
+                    )}
+                    {regularChats.map((chat) => (
+                      <ChatItem
+                        key={chat.id}
+                        chat={chat}
+                        isActive={activeChat === chat.id}
+                        onClick={() => selectChat(chat.id)}
+                        onDelete={(e) => deleteChatHandler(chat.id, e)}
+                        onPin={(e) => togglePinChat(chat.id, e)}
+                        onRename={(e) =>
+                          startRenameChat(chat.id, chat.title, e)
+                        }
+                        showMenu={showChatMenu === chat.id}
+                        onMenuToggle={(e) => {
+                          e.stopPropagation();
+                          setShowChatMenu(
+                            showChatMenu === chat.id ? null : chat.id
+                          );
+                        }}
+                        formatDate={formatDate}
+                        isEditing={editingChatId === chat.id}
+                        editingTitle={editingTitle}
+                        onEditingTitleChange={setEditingTitle}
+                        onSaveRename={() => saveRename(chat.id)}
+                        onCancelRename={cancelRename}
+                        onRenameKeyPress={(e) =>
+                          handleRenameKeyPress(e, chat.id)
+                        }
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {filteredChats.length === 0 && !isLoadingChats && (
+                  <div className="empty-chats">
+                    <MessageSquare size={48} strokeWidth={1} />
+                    <p>No chats yet</p>
+                    <span>Start a new conversation</span>
+                  </div>
+                )}
+              </>
             )}
           </div>
 
@@ -539,74 +666,93 @@ const Chat = () => {
               {/* Chat Header */}
               <header className="chat-header">
                 <div className="chat-header-info">
-                  <h3>
-                    {chats.find((c) => c.id === activeChat)?.title || "Chat"}
-                  </h3>
-                  {uploadedFile && (
+                  <h3>{activeChatData?.title || "Chat"}</h3>
+                  {uploadedDocuments.length > 0 && (
                     <div className="chat-header-document">
                       <FileText size={14} />
-                      <span>{uploadedFile.name}</span>
+                      <span>{uploadedDocuments.length} document(s)</span>
                     </div>
                   )}
                 </div>
                 <div className="chat-header-actions">
-                  {!uploadedFile && (
-                    <button
-                      className="header-action-btn"
-                      onClick={() => fileInputRef.current?.click()}
-                      title="Upload Document"
-                    >
+                  <button
+                    className="header-action-btn"
+                    onClick={() => fileInputRef.current?.click()}
+                    title="Upload Document"
+                    disabled={isUploading}
+                  >
+                    {isUploading ? (
+                      <Loader2 size={20} className="spin" />
+                    ) : (
                       <Paperclip size={20} />
-                    </button>
-                  )}
+                    )}
+                  </button>
                   <input
                     type="file"
                     ref={fileInputRef}
                     onChange={handleFileUpload}
-                    accept=".pdf,.doc,.docx,.txt"
+                    accept=".pdf"
                     style={{ display: "none" }}
                   />
                 </div>
               </header>
 
               {/* Document Banner */}
-              {uploadedFile && (
-                <div className="document-banner">
-                  <div className="document-info">
-                    <FileText size={20} />
-                    <div className="document-details">
-                      <span className="document-name">{uploadedFile.name}</span>
-                      <span className="document-size">
-                        {formatFileSize(uploadedFile.size)}
-                      </span>
+              {uploadedDocuments.length > 0 && (
+                <div className="documents-banner">
+                  {uploadedDocuments.map((doc) => (
+                    <div key={doc.id} className="document-banner">
+                      <div className="document-info">
+                        <FileText size={20} />
+                        <div className="document-details">
+                          <span className="document-name">{doc.filename}</span>
+                          <span className="document-size">
+                            {doc.num_chunks} chunks indexed
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        className="remove-document"
+                        onClick={() => removeDocument(doc.id)}
+                        title="Remove from view"
+                      >
+                        <X size={18} />
+                      </button>
                     </div>
-                  </div>
-                  <button className="remove-document" onClick={removeDocument}>
-                    <X size={18} />
-                  </button>
+                  ))}
                 </div>
               )}
 
               {/* Messages Area */}
               <div className="chat-messages">
-                {messages.length === 0 ? (
+                {isLoading && messages.length === 0 ? (
+                  <div className="loading-messages">
+                    <Loader2 size={32} className="spin" />
+                    <span>Loading conversation...</span>
+                  </div>
+                ) : messages.length === 0 ? (
                   <div className="chat-welcome">
                     <div className="welcome-icon">
                       <MessageSquare size={48} strokeWidth={1.5} />
                     </div>
                     <h3>Start a Conversation</h3>
                     <p>
-                      Ask any legal question or upload a document for analysis.
+                      Upload a legal document and ask questions about it.
                       LegalEagle AI will help you understand complex legal
                       matters.
                     </p>
-                    {!uploadedFile && (
+                    {uploadedDocuments.length === 0 && (
                       <button
                         className="upload-prompt-btn"
                         onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploading}
                       >
-                        <Paperclip size={18} />
-                        Upload a Document
+                        {isUploading ? (
+                          <Loader2 size={18} className="spin" />
+                        ) : (
+                          <Paperclip size={18} />
+                        )}
+                        Upload a PDF Document
                       </button>
                     )}
                   </div>
@@ -620,14 +766,26 @@ const Chat = () => {
                     >
                       <div className="message-content">
                         <p>{message.content}</p>
+                        {message.sources && message.sources.length > 0 && (
+                          <div className="message-sources">
+                            <span className="sources-label">Sources:</span>
+                            {message.sources.map((source, idx) => (
+                              <span key={idx} className="source-tag">
+                                {source.source ||
+                                  source.filename ||
+                                  `Source ${idx + 1}`}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                         <span className="message-time">
-                          {formatTimestamp(message.timestamp)}
+                          {formatTimestamp(message.created_at)}
                         </span>
                       </div>
                     </div>
                   ))
                 )}
-                {isLoading && (
+                {isSending && (
                   <div className="message assistant">
                     <div className="message-content loading">
                       <div className="typing-indicator">
@@ -646,26 +804,35 @@ const Chat = () => {
                 {isUploading && (
                   <div className="uploading-indicator">
                     <Loader2 size={16} className="spin" />
-                    <span>Uploading document...</span>
+                    <span>Uploading and processing document...</span>
                   </div>
                 )}
                 <div className="chat-input-wrapper">
                   <textarea
-                    placeholder="Type your legal question..."
+                    placeholder={
+                      uploadedDocuments.length === 0
+                        ? "Upload a document first to ask questions..."
+                        : "Type your legal question..."
+                    }
                     value={inputMessage}
                     onChange={(e) => setInputMessage(e.target.value)}
                     onKeyPress={handleKeyPress}
                     rows={1}
                     className="chat-input"
+                    disabled={isSending}
                   />
                   <button
                     className={`send-btn ${
                       inputMessage.trim() ? "active" : ""
                     }`}
                     onClick={sendMessage}
-                    disabled={!inputMessage.trim() || isLoading}
+                    disabled={!inputMessage.trim() || isSending}
                   >
-                    <Send size={20} />
+                    {isSending ? (
+                      <Loader2 size={20} className="spin" />
+                    ) : (
+                      <Send size={20} />
+                    )}
                   </button>
                 </div>
                 <p className="input-hint">
@@ -680,8 +847,16 @@ const Chat = () => {
               </div>
               <h3>Welcome to LegalEagle Chat</h3>
               <p>Select a chat or create a new one to get started</p>
-              <button className="create-chat-btn" onClick={createNewChat}>
-                <Plus size={20} />
+              <button
+                className="create-chat-btn"
+                onClick={createNewChat}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <Loader2 size={20} className="spin" />
+                ) : (
+                  <Plus size={20} />
+                )}
                 Create New Chat
               </button>
             </div>
@@ -707,7 +882,6 @@ const ChatItem = ({
   editingTitle,
   onEditingTitleChange,
   onSaveRename,
-  onCancelRename,
   onRenameKeyPress,
 }) => {
   return (
@@ -718,7 +892,11 @@ const ChatItem = ({
       onClick={onClick}
     >
       <div className="chat-item-icon">
-        {chat.document ? <FileText size={18} /> : <MessageSquare size={18} />}
+        {chat.hasDocument ? (
+          <FileText size={18} />
+        ) : (
+          <MessageSquare size={18} />
+        )}
       </div>
       <div className="chat-item-content">
         <div className="chat-item-title">
@@ -739,8 +917,7 @@ const ChatItem = ({
           )}
         </div>
         <div className="chat-item-meta">
-          <span>{formatDate(chat.updatedAt)}</span>
-          {chat.document && <span>· {chat.document.name.slice(0, 15)}...</span>}
+          <span>{formatDate(chat.updated_at || chat.created_at)}</span>
         </div>
       </div>
       <div className="chat-item-actions">

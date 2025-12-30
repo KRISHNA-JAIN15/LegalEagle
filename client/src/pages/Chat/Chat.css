@@ -996,3 +996,104 @@
 .chat-messages::-webkit-scrollbar-thumb:hover {
   background: var(--color-text-muted);
 }
+
+/* ===== Error Banner ===== */
+.error-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-xl);
+  background-color: #fef2f2;
+  border-bottom: 1px solid #fecaca;
+  color: #dc2626;
+  font-size: var(--font-size-sm);
+}
+
+.error-banner button {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: #dc2626;
+  cursor: pointer;
+  padding: var(--spacing-xs);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.error-banner button:hover {
+  background-color: #fee2e2;
+}
+
+/* ===== Loading States ===== */
+.loading-chats,
+.loading-messages {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xl);
+  gap: var(--spacing-md);
+  color: var(--color-text-muted);
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ===== Documents Banner ===== */
+.documents-banner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-xl);
+  background-color: var(--color-background-light);
+  border-bottom: 1px solid var(--color-border-light);
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+/* ===== Message Sources ===== */
+.message-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-sm);
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--color-border-light);
+}
+
+.sources-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-medium);
+}
+
+.source-tag {
+  font-size: var(--font-size-xs);
+  background-color: var(--color-background-light);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-light);
+}
+
+/* ===== Disabled States ===== */
+.new-chat-btn:disabled,
+.send-btn:disabled,
+.header-action-btn:disabled,
+.upload-prompt-btn:disabled,
+.create-chat-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
