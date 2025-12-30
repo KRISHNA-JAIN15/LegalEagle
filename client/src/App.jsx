@@ -95,7 +95,7 @@ const AuthHandler = () => {
               data.session.user.email
             );
             processedRef.current = true;
-            
+
             // Store user data in localStorage
             localStorage.setItem("userToken", data.session.access_token);
             localStorage.setItem("userEmail", data.session.user.email);
