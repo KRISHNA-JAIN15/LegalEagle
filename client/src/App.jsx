@@ -9,6 +9,7 @@ import Footer from "./components/Footer";
 import Home from "./pages/Home";
 import { Login, Signup } from "./pages/Auth";
 import { Chat } from "./pages/Chat";
+import { Pricing } from "./pages/Pricing";
 import Docs from "./pages/Docs";
 import "./styles/global.css";
 
@@ -16,7 +17,7 @@ import "./styles/global.css";
 const Layout = ({ children }) => {
   const location = useLocation();
   const authRoutes = ["/login", "/signup", "/forgot-password"];
-  const fullScreenRoutes = ["/chat", "/dashboard"];
+  const fullScreenRoutes = ["/chat", "/dashboard", "/pricing"];
   const isAuthPage = authRoutes.includes(location.pathname);
   const isFullScreenPage = fullScreenRoutes.includes(location.pathname);
 
@@ -38,10 +39,10 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/chat" element={<Chat />} />
+          <Route path="/pricing" element={<Pricing />} />
           {/* Placeholder routes for future pages */}
           <Route path="/features" element={<Docs />} />
           <Route path="/how-it-works" element={<Docs />} />
-          <Route path="/pricing" element={<Docs />} />
           <Route path="/docs" element={<Docs />} />
           <Route path="/dashboard" element={<Chat />} />
         </Routes>

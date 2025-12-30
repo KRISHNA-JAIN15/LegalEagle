@@ -22,8 +22,6 @@ import {
   Edit2,
   RefreshCw,
   Crown,
-  Lock,
-  CreditCard,
 } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 import * as api from "../../services/api";
@@ -42,8 +40,6 @@ const Chat = () => {
 
   // Premium/Payment state
   const [userStatus, setUserStatus] = useState(null);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   // Chat state
   const [chats, setChats] = useState([]);
@@ -166,12 +162,19 @@ const Chat = () => {
 
   // ==================== Chat Operations ====================
 
+  const redirectToPricing = (message) => {
+    const encodedMessage = encodeURIComponent(message);
+    navigate(`/pricing?toast=${encodedMessage}`);
+  };
+
   const createNewChat = async () => {
     if (!userId) return;
 
     // Check if user can create chat
     if (userStatus && !userStatus.can_create_chat) {
-      setShowPaymentModal(true);
+      redirectToPricing(
+        "You've reached your free chat limit. Upgrade to Premium for unlimited chats!"
+      );
       return;
     }
 
@@ -194,7 +197,9 @@ const Chat = () => {
     } catch (err) {
       console.error("Failed to create chat:", err);
       if (err.message?.includes("403") || err.message?.includes("limit")) {
-        setShowPaymentModal(true);
+        redirectToPricing(
+          "You've reached your free chat limit. Upgrade to Premium for unlimited chats!"
+        );
       } else {
         setError("Failed to create new chat. Please try again.");
       }
@@ -323,10 +328,12 @@ const Chat = () => {
 
     // Check if user can upload
     if (userStatus && !userStatus.can_upload_document) {
-      setShowPaymentModal(true);
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
+      redirectToPricing(
+        "You've reached your free document upload limit. Upgrade to Premium for unlimited uploads!"
+      );
       return;
     }
 
@@ -370,7 +377,9 @@ const Chat = () => {
     } catch (err) {
       console.error("Upload failed:", err);
       if (err.message?.includes("403") || err.message?.includes("limit")) {
-        setShowPaymentModal(true);
+        redirectToPricing(
+          "You've reached your free document upload limit. Upgrade to Premium for unlimited uploads!"
+        );
       } else {
         setError(err.message || "Failed to upload document. Please try again.");
       }
@@ -396,7 +405,9 @@ const Chat = () => {
 
     // Check if user can query
     if (userStatus && !userStatus.can_query) {
-      setShowPaymentModal(true);
+      redirectToPricing(
+        "You've used all your queries. Upgrade to Premium for 100 more AI queries!"
+      );
       return;
     }
 
@@ -469,7 +480,9 @@ const Chat = () => {
     } catch (err) {
       console.error("Failed to send message:", err);
       if (err.message?.includes("403") || err.message?.includes("limit")) {
-        setShowPaymentModal(true);
+        redirectToPricing(
+          "You've used all your queries. Upgrade to Premium for 100 more AI queries!"
+        );
       } else {
         setError(err.message || "Failed to get response. Please try again.");
       }
@@ -524,88 +537,6 @@ const Chat = () => {
     return text.replace(/\*\*/g, "");
   };
 
-  // ==================== Payment Handling ====================
-
-  const loadRazorpayScript = () => {
-    return new Promise((resolve) => {
-      if (window.Razorpay) {
-        resolve(true);
-        return;
-      }
-      const script = document.createElement("script");
-      script.src = "https://checkout.razorpay.com/v1/checkout.js";
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.body.appendChild(script);
-    });
-  };
-
-  const handlePayment = async () => {
-    setIsProcessingPayment(true);
-    setError(null);
-
-    try {
-      // Load Razorpay script
-      const scriptLoaded = await loadRazorpayScript();
-      if (!scriptLoaded) {
-        throw new Error("Failed to load payment gateway. Please try again.");
-      }
-
-      // Create order
-      const orderResponse = await api.createPaymentOrder(userId);
-
-      const options = {
-        key: orderResponse.key_id,
-        amount: orderResponse.amount,
-        currency: orderResponse.currency,
-        name: "LegalEagle",
-        description: "Premium Upgrade - 100 Queries",
-        order_id: orderResponse.order_id,
-        handler: async function (response) {
-          try {
-            // Verify payment
-            const verifyResponse = await api.verifyPayment({
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-              user_id: userId,
-            });
-
-            if (verifyResponse.status === "success") {
-              setShowPaymentModal(false);
-              await loadUserStatus();
-              alert(
-                "🎉 Payment successful! You are now a premium user with 100 queries."
-              );
-            }
-          } catch (err) {
-            console.error("Payment verification failed:", err);
-            setError("Payment verification failed. Please contact support.");
-          }
-        },
-        prefill: {
-          name: userName,
-        },
-        theme: {
-          color: "#ff4d00",
-        },
-        modal: {
-          ondismiss: function () {
-            setIsProcessingPayment(false);
-          },
-        },
-      };
-
-      const razorpay = new window.Razorpay(options);
-      razorpay.open();
-    } catch (err) {
-      console.error("Payment initiation failed:", err);
-      setError(err.message || "Failed to initiate payment. Please try again.");
-    } finally {
-      setIsProcessingPayment(false);
-    }
-  };
-
   // ==================== Filter and Sort Chats ====================
 
   const filteredChats = chats
@@ -636,92 +567,6 @@ const Chat = () => {
           <button onClick={() => setError(null)}>
             <X size={16} />
           </button>
-        </div>
-      )}
-
-      {/* Payment Modal */}
-      {showPaymentModal && (
-        <div
-          className="payment-modal-overlay"
-          onClick={() => setShowPaymentModal(false)}
-        >
-          <div className="payment-modal" onClick={(e) => e.stopPropagation()}>
-            <button
-              className="payment-modal-close"
-              onClick={() => setShowPaymentModal(false)}
-            >
-              <X size={24} />
-            </button>
-
-            <div className="payment-modal-header">
-              <Lock size={48} className="payment-lock-icon" />
-              <h2>Upgrade to Premium</h2>
-              <p>You've reached the free tier limit</p>
-            </div>
-
-            <div className="payment-modal-content">
-              <div className="current-usage">
-                <h4>Your Current Usage:</h4>
-                <div className="usage-stats">
-                  <div className="usage-stat">
-                    <span className="usage-label">Chats:</span>
-                    <span className="usage-value">
-                      {userStatus?.chat_count || 0} /{" "}
-                      {userStatus?.chat_limit || 2}
-                    </span>
-                  </div>
-                  <div className="usage-stat">
-                    <span className="usage-label">Documents:</span>
-                    <span className="usage-value">
-                      {userStatus?.document_count || 0} /{" "}
-                      {userStatus?.document_limit || 2}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="premium-benefits">
-                <h4>Premium Benefits:</h4>
-                <ul>
-                  <li>
-                    <Check size={16} /> 100 AI-powered legal queries
-                  </li>
-                  <li>
-                    <Check size={16} /> Unlimited document uploads
-                  </li>
-                  <li>
-                    <Check size={16} /> Unlimited chat sessions
-                  </li>
-                  <li>
-                    <Check size={16} /> Priority support
-                  </li>
-                </ul>
-              </div>
-
-              <div className="payment-price">
-                <span className="price-amount">₹499</span>
-                <span className="price-period">one-time</span>
-              </div>
-
-              <button
-                className="payment-btn"
-                onClick={handlePayment}
-                disabled={isProcessingPayment}
-              >
-                {isProcessingPayment ? (
-                  <>
-                    <Loader2 size={20} className="spin" />
-                    <span>Processing...</span>
-                  </>
-                ) : (
-                  <>
-                    <CreditCard size={20} />
-                    <span>Pay with Razorpay</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
         </div>
       )}
 
@@ -759,12 +604,9 @@ const Chat = () => {
                   <span>
                     {userStatus.chat_count}/{userStatus.chat_limit} chats
                   </span>
-                  <button
-                    className="upgrade-btn-small"
-                    onClick={() => setShowPaymentModal(true)}
-                  >
+                  <Link to="/pricing" className="upgrade-btn-small">
                     Upgrade
-                  </button>
+                  </Link>
                 </>
               )}
             </div>
