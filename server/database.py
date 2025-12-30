@@ -1,0 +1,260 @@
+from datetime import datetime
+from typing import Optional, List
+from motor.motor_asyncio import AsyncIOMotorClient
+from bson import ObjectId
+from pinecone import Pinecone
+
+from config import (
+    MONGODB_URI, 
+    MONGODB_DB_NAME, 
+    MONGODB_CHATS_COLLECTION,
+    MONGODB_MESSAGES_COLLECTION,
+    MONGODB_DOCUMENTS_COLLECTION,
+    PINECONE_API_KEY,
+    PINECONE_INDEX_NAME
+)
+
+
+class Database:
+    """MongoDB Database Handler for Chat Persistence"""
+    
+    def __init__(self):
+        self.client: Optional[AsyncIOMotorClient] = None
+        self.db = None
+        self.chats = None
+        self.messages = None
+        self.documents = None
+        
+    async def connect(self):
+        """Connect to MongoDB"""
+        self.client = AsyncIOMotorClient(MONGODB_URI)
+        self.db = self.client[MONGODB_DB_NAME]
+        self.chats = self.db[MONGODB_CHATS_COLLECTION]
+        self.messages = self.db[MONGODB_MESSAGES_COLLECTION]
+        self.documents = self.db[MONGODB_DOCUMENTS_COLLECTION]
+        
+        # Create indexes for better query performance
+        await self.chats.create_index("user_id")
+        await self.chats.create_index("created_at")
+        await self.messages.create_index("chat_id")
+        await self.messages.create_index("created_at")
+        await self.documents.create_index("chat_id")
+        
+        print("✅ Connected to MongoDB")
+        
+    async def disconnect(self):
+        """Disconnect from MongoDB"""
+        if self.client:
+            self.client.close()
+            print("🔌 Disconnected from MongoDB")
+    
+    # ==================== CHAT OPERATIONS ====================
+    
+    async def create_chat(
+        self, 
+        user_id: str, 
+        title: str = "New Chat",
+        prompt_template: str = "legal_assistant"
+    ) -> str:
+        """Create a new chat session"""
+        chat = {
+            "user_id": user_id,
+            "title": title,
+            "prompt_template": prompt_template,
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow(),
+            "is_active": True
+        }
+        result = await self.chats.insert_one(chat)
+        return str(result.inserted_id)
+    
+    async def get_chat(self, chat_id: str) -> Optional[dict]:
+        """Get a single chat by ID"""
+        chat = await self.chats.find_one({"_id": ObjectId(chat_id)})
+        if chat:
+            chat["_id"] = str(chat["_id"])
+        return chat
+    
+    async def get_user_chats(self, user_id: str, limit: int = 50) -> List[dict]:
+        """Get all chats for a user"""
+        cursor = self.chats.find(
+            {"user_id": user_id, "is_active": True}
+        ).sort("updated_at", -1).limit(limit)
+        
+        chats = []
+        async for chat in cursor:
+            chat["_id"] = str(chat["_id"])
+            chats.append(chat)
+        return chats
+    
+    async def update_chat(self, chat_id: str, updates: dict) -> bool:
+        """Update chat metadata"""
+        updates["updated_at"] = datetime.utcnow()
+        result = await self.chats.update_one(
+            {"_id": ObjectId(chat_id)},
+            {"$set": updates}
+        )
+        return result.modified_count > 0
+    
+    async def delete_chat(self, chat_id: str) -> bool:
+        """
+        Delete a chat and all associated data:
+        - Messages from MongoDB
+        - Documents metadata from MongoDB
+        - Vectors from Pinecone (namespace = chat_id)
+        """
+        try:
+            # 1. Delete messages
+            await self.messages.delete_many({"chat_id": chat_id})
+            
+            # 2. Delete document metadata
+            await self.documents.delete_many({"chat_id": chat_id})
+            
+            # 3. Delete vectors from Pinecone
+            await self._delete_pinecone_namespace(chat_id)
+            
+            # 4. Delete the chat itself
+            result = await self.chats.delete_one({"_id": ObjectId(chat_id)})
+            
+            return result.deleted_count > 0
+            
+        except Exception as e:
+            print(f"Error deleting chat: {e}")
+            return False
+    
+    async def _delete_pinecone_namespace(self, namespace: str):
+        """Delete all vectors in a Pinecone namespace"""
+        try:
+            pc = Pinecone(api_key=PINECONE_API_KEY)
+            index = pc.Index(PINECONE_INDEX_NAME)
+            
+            # Delete all vectors in the namespace
+            index.delete(delete_all=True, namespace=namespace)
+            print(f"✅ Deleted Pinecone namespace: {namespace}")
+            
+        except Exception as e:
+            print(f"Error deleting Pinecone namespace: {e}")
+    
+    # ==================== MESSAGE OPERATIONS ====================
+    
+    async def add_message(
+        self, 
+        chat_id: str, 
+        role: str, 
+        content: str,
+        sources: List[int] = None,
+        metadata: dict = None
+    ) -> str:
+        """Add a message to a chat"""
+        message = {
+            "chat_id": chat_id,
+            "role": role,  # "user" or "assistant"
+            "content": content,
+            "sources": sources or [],
+            "metadata": metadata or {},
+            "created_at": datetime.utcnow()
+        }
+        result = await self.messages.insert_one(message)
+        
+        # Update chat's updated_at timestamp
+        await self.update_chat(chat_id, {})
+        
+        # Auto-generate chat title from first user message
+        if role == "user":
+            chat = await self.get_chat(chat_id)
+            if chat and chat.get("title") == "New Chat":
+                title = content[:50] + "..." if len(content) > 50 else content
+                await self.update_chat(chat_id, {"title": title})
+        
+        return str(result.inserted_id)
+    
+    async def get_chat_messages(
+        self, 
+        chat_id: str, 
+        limit: int = 100
+    ) -> List[dict]:
+        """Get all messages for a chat"""
+        cursor = self.messages.find(
+            {"chat_id": chat_id}
+        ).sort("created_at", 1).limit(limit)
+        
+        messages = []
+        async for msg in cursor:
+            msg["_id"] = str(msg["_id"])
+            messages.append(msg)
+        return messages
+    
+    async def get_chat_context(
+        self, 
+        chat_id: str, 
+        max_messages: int = 10
+    ) -> List[dict]:
+        """Get recent messages for context (for RAG)"""
+        cursor = self.messages.find(
+            {"chat_id": chat_id}
+        ).sort("created_at", -1).limit(max_messages)
+        
+        messages = []
+        async for msg in cursor:
+            messages.append({
+                "role": msg["role"],
+                "content": msg["content"]
+            })
+        
+        # Reverse to get chronological order
+        return list(reversed(messages))
+    
+    # ==================== DOCUMENT OPERATIONS ====================
+    
+    async def add_document(
+        self, 
+        chat_id: str, 
+        filename: str,
+        num_chunks: int,
+        file_size: int = 0
+    ) -> str:
+        """Track uploaded documents"""
+        doc = {
+            "chat_id": chat_id,
+            "filename": filename,
+            "num_chunks": num_chunks,
+            "file_size": file_size,
+            "uploaded_at": datetime.utcnow()
+        }
+        result = await self.documents.insert_one(doc)
+        return str(result.inserted_id)
+    
+    async def get_chat_documents(self, chat_id: str) -> List[dict]:
+        """Get all documents uploaded to a chat"""
+        cursor = self.documents.find({"chat_id": chat_id})
+        
+        docs = []
+        async for doc in cursor:
+            doc["_id"] = str(doc["_id"])
+            docs.append(doc)
+        return docs
+    
+    async def delete_document(self, document_id: str, chat_id: str) -> bool:
+        """Delete a specific document from a chat"""
+        try:
+            # Get document info
+            doc = await self.documents.find_one({"_id": ObjectId(document_id)})
+            if not doc:
+                return False
+            
+            # Delete from MongoDB
+            await self.documents.delete_one({"_id": ObjectId(document_id)})
+            
+            # Note: For Pinecone, we'd need to track vector IDs per document
+            # For simplicity, we're not implementing per-document vector deletion
+            # The full namespace deletion happens on chat delete
+            
+            return True
+            
+        except Exception as e:
+            print(f"Error deleting document: {e}")
+            return False
+
+
+# Global database instance
+db = Database()
