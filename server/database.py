@@ -10,8 +10,13 @@ from config import (
     MONGODB_CHATS_COLLECTION,
     MONGODB_MESSAGES_COLLECTION,
     MONGODB_DOCUMENTS_COLLECTION,
+    MONGODB_USERS_COLLECTION,
+    MONGODB_PAYMENTS_COLLECTION,
     PINECONE_API_KEY,
-    PINECONE_INDEX_NAME
+    PINECONE_INDEX_NAME,
+    FREE_CHAT_LIMIT,
+    FREE_DOCUMENT_LIMIT,
+    PREMIUM_QUERIES_LIMIT
 )
 
 
@@ -24,6 +29,8 @@ class Database:
         self.chats = None
         self.messages = None
         self.documents = None
+        self.users = None
+        self.payments = None
         
     async def connect(self):
         """Connect to MongoDB"""
@@ -32,6 +39,8 @@ class Database:
         self.chats = self.db[MONGODB_CHATS_COLLECTION]
         self.messages = self.db[MONGODB_MESSAGES_COLLECTION]
         self.documents = self.db[MONGODB_DOCUMENTS_COLLECTION]
+        self.users = self.db[MONGODB_USERS_COLLECTION]
+        self.payments = self.db[MONGODB_PAYMENTS_COLLECTION]
         
         # Create indexes for better query performance
         await self.chats.create_index("user_id")
@@ -39,6 +48,9 @@ class Database:
         await self.messages.create_index("chat_id")
         await self.messages.create_index("created_at")
         await self.documents.create_index("chat_id")
+        await self.users.create_index("user_id", unique=True)
+        await self.payments.create_index("user_id")
+        await self.payments.create_index("razorpay_order_id")
         
         print("✅ Connected to MongoDB")
         
@@ -254,6 +266,213 @@ class Database:
         except Exception as e:
             print(f"Error deleting document: {e}")
             return False
+
+    # ==================== USER OPERATIONS ====================
+    
+    async def get_or_create_user(self, user_id: str) -> dict:
+        """Get user or create if doesn't exist"""
+        user = await self.users.find_one({"user_id": user_id})
+        
+        if not user:
+            user = {
+                "user_id": user_id,
+                "is_premium": False,
+                "chat_count": 0,
+                "document_count": 0,
+                "query_count": 0,
+                "remaining_queries": 0,  # Premium queries remaining
+                "total_payments": 0,
+                "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow()
+            }
+            await self.users.insert_one(user)
+        
+        return user
+    
+    async def get_user(self, user_id: str) -> Optional[dict]:
+        """Get user by ID"""
+        return await self.users.find_one({"user_id": user_id})
+    
+    async def increment_user_chat_count(self, user_id: str) -> dict:
+        """Increment user's chat count"""
+        result = await self.users.find_one_and_update(
+            {"user_id": user_id},
+            {
+                "$inc": {"chat_count": 1},
+                "$set": {"updated_at": datetime.utcnow()}
+            },
+            return_document=True
+        )
+        return result
+    
+    async def increment_user_document_count(self, user_id: str) -> dict:
+        """Increment user's document count"""
+        result = await self.users.find_one_and_update(
+            {"user_id": user_id},
+            {
+                "$inc": {"document_count": 1},
+                "$set": {"updated_at": datetime.utcnow()}
+            },
+            return_document=True
+        )
+        return result
+    
+    async def increment_user_query_count(self, user_id: str) -> dict:
+        """Increment user's query count and decrement remaining queries if premium"""
+        user = await self.get_user(user_id)
+        
+        update = {
+            "$inc": {"query_count": 1},
+            "$set": {"updated_at": datetime.utcnow()}
+        }
+        
+        # If user is premium and has remaining queries, decrement
+        if user and user.get("is_premium") and user.get("remaining_queries", 0) > 0:
+            update["$inc"]["remaining_queries"] = -1
+        
+        result = await self.users.find_one_and_update(
+            {"user_id": user_id},
+            update,
+            return_document=True
+        )
+        
+        # Check if premium should be revoked (no remaining queries)
+        if result and result.get("is_premium") and result.get("remaining_queries", 0) <= 0:
+            await self.users.update_one(
+                {"user_id": user_id},
+                {"$set": {"is_premium": False}}
+            )
+            result["is_premium"] = False
+        
+        return result
+    
+    async def check_user_limits(self, user_id: str) -> dict:
+        """Check if user has exceeded free limits"""
+        user = await self.get_or_create_user(user_id)
+        
+        is_premium = user.get("is_premium", False)
+        chat_count = user.get("chat_count", 0)
+        document_count = user.get("document_count", 0)
+        remaining_queries = user.get("remaining_queries", 0)
+        
+        if is_premium:
+            return {
+                "can_create_chat": True,
+                "can_upload_document": True,
+                "can_query": remaining_queries > 0,
+                "is_premium": True,
+                "chat_count": chat_count,
+                "document_count": document_count,
+                "remaining_queries": remaining_queries,
+                "chat_limit": None,
+                "document_limit": None,
+                "message": "Premium user"
+            }
+        
+        can_chat = chat_count < FREE_CHAT_LIMIT
+        can_upload = document_count < FREE_DOCUMENT_LIMIT
+        
+        return {
+            "can_create_chat": can_chat,
+            "can_upload_document": can_upload,
+            "can_query": can_chat,  # Free users can query only if they haven't exceeded chat limit
+            "is_premium": False,
+            "chat_count": chat_count,
+            "document_count": document_count,
+            "remaining_queries": 0,
+            "chat_limit": FREE_CHAT_LIMIT,
+            "document_limit": FREE_DOCUMENT_LIMIT,
+            "message": "Free tier limits apply"
+        }
+    
+    async def upgrade_to_premium(self, user_id: str, queries: int = PREMIUM_QUERIES_LIMIT) -> dict:
+        """Upgrade user to premium with given number of queries"""
+        result = await self.users.find_one_and_update(
+            {"user_id": user_id},
+            {
+                "$set": {
+                    "is_premium": True,
+                    "updated_at": datetime.utcnow()
+                },
+                "$inc": {
+                    "remaining_queries": queries,
+                    "total_payments": 1
+                }
+            },
+            return_document=True
+        )
+        return result
+
+    # ==================== PAYMENT OPERATIONS ====================
+    
+    async def create_payment(
+        self,
+        user_id: str,
+        razorpay_order_id: str,
+        amount: int,
+        currency: str = "INR"
+    ) -> str:
+        """Create a payment record"""
+        payment = {
+            "user_id": user_id,
+            "razorpay_order_id": razorpay_order_id,
+            "razorpay_payment_id": None,
+            "razorpay_signature": None,
+            "amount": amount,
+            "currency": currency,
+            "status": "created",
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        }
+        result = await self.payments.insert_one(payment)
+        return str(result.inserted_id)
+    
+    async def update_payment_success(
+        self,
+        razorpay_order_id: str,
+        razorpay_payment_id: str,
+        razorpay_signature: str
+    ) -> bool:
+        """Update payment record on successful payment"""
+        result = await self.payments.update_one(
+            {"razorpay_order_id": razorpay_order_id},
+            {
+                "$set": {
+                    "razorpay_payment_id": razorpay_payment_id,
+                    "razorpay_signature": razorpay_signature,
+                    "status": "success",
+                    "updated_at": datetime.utcnow()
+                }
+            }
+        )
+        return result.modified_count > 0
+    
+    async def update_payment_failed(self, razorpay_order_id: str, error: str = None) -> bool:
+        """Update payment record on failed payment"""
+        result = await self.payments.update_one(
+            {"razorpay_order_id": razorpay_order_id},
+            {
+                "$set": {
+                    "status": "failed",
+                    "error": error,
+                    "updated_at": datetime.utcnow()
+                }
+            }
+        )
+        return result.modified_count > 0
+    
+    async def get_payment_by_order_id(self, razorpay_order_id: str) -> Optional[dict]:
+        """Get payment by Razorpay order ID"""
+        return await self.payments.find_one({"razorpay_order_id": razorpay_order_id})
+    
+    async def get_user_payments(self, user_id: str) -> List[dict]:
+        """Get all payments for a user"""
+        cursor = self.payments.find({"user_id": user_id}).sort("created_at", -1)
+        payments = []
+        async for payment in cursor:
+            payment["_id"] = str(payment["_id"])
+            payments.append(payment)
+        return payments
 
 
 # Global database instance

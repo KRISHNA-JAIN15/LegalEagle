@@ -39,9 +39,9 @@ function App() {
           <Route path="/signup" element={<Signup />} />
           <Route path="/chat" element={<Chat />} />
           {/* Placeholder routes for future pages */}
-          <Route path="/features" element={<Home />} />
-          <Route path="/how-it-works" element={<Home />} />
-          <Route path="/pricing" element={<Home />} />
+          <Route path="/features" element={<Docs />} />
+          <Route path="/how-it-works" element={<Docs />} />
+          <Route path="/pricing" element={<Docs />} />
           <Route path="/docs" element={<Docs />} />
           <Route path="/dashboard" element={<Chat />} />
         </Routes>

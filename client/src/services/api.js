@@ -216,6 +216,46 @@ export async function healthCheck() {
   return apiRequest("/health");
 }
 
+// ==================== User & Payment API ====================
+
+/**
+ * Get user status including limits and premium status
+ * @param {string} userId - User ID
+ */
+export async function getUserStatus(userId) {
+  return apiRequest(`/user/status?user_id=${encodeURIComponent(userId)}`);
+}
+
+/**
+ * Create a Razorpay order for premium upgrade
+ * @param {string} userId - User ID
+ */
+export async function createPaymentOrder(userId) {
+  return apiRequest("/payment/create-order", {
+    method: "POST",
+    body: JSON.stringify({ user_id: userId }),
+  });
+}
+
+/**
+ * Verify Razorpay payment
+ * @param {object} paymentData - Payment verification data
+ */
+export async function verifyPayment(paymentData) {
+  return apiRequest("/payment/verify", {
+    method: "POST",
+    body: JSON.stringify(paymentData),
+  });
+}
+
+/**
+ * Get user's payment history
+ * @param {string} userId - User ID
+ */
+export async function getPaymentHistory(userId) {
+  return apiRequest(`/payment/history?user_id=${encodeURIComponent(userId)}`);
+}
+
 export default {
   createChat,
   getUserChats,
@@ -231,4 +271,8 @@ export default {
   getPromptTemplate,
   getTemplatesByCategory,
   healthCheck,
+  getUserStatus,
+  createPaymentOrder,
+  verifyPayment,
+  getPaymentHistory,
 };

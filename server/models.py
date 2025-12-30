@@ -30,6 +30,19 @@ class UploadDocumentRequest(BaseModel):
     chat_id: str = Field(..., description="Chat ID to attach document to")
 
 
+class CreateOrderRequest(BaseModel):
+    """Request to create a Razorpay order"""
+    user_id: str = Field(..., description="User ID")
+
+
+class VerifyPaymentRequest(BaseModel):
+    """Request to verify Razorpay payment"""
+    razorpay_order_id: str = Field(..., description="Razorpay Order ID")
+    razorpay_payment_id: str = Field(..., description="Razorpay Payment ID")
+    razorpay_signature: str = Field(..., description="Razorpay Signature")
+    user_id: str = Field(..., description="User ID")
+
+
 # ==================== RESPONSE MODELS ====================
 
 class ChatResponse(BaseModel):
@@ -117,3 +130,48 @@ class ErrorResponse(BaseModel):
     status: str = "error"
     message: str
     detail: Optional[str] = None
+
+
+# ==================== USER & PAYMENT MODELS ====================
+
+class UserStatusResponse(BaseModel):
+    """User status and limits"""
+    user_id: str
+    is_premium: bool
+    can_create_chat: bool
+    can_upload_document: bool
+    can_query: bool
+    chat_count: int
+    document_count: int
+    remaining_queries: int
+    chat_limit: Optional[int]
+    document_limit: Optional[int]
+    message: str
+
+
+class CreateOrderResponse(BaseModel):
+    """Response with Razorpay order details"""
+    order_id: str
+    amount: int
+    currency: str
+    key_id: str
+    status: str
+
+
+class PaymentVerifyResponse(BaseModel):
+    """Response after payment verification"""
+    status: str
+    message: str
+    is_premium: bool
+    remaining_queries: int
+
+
+class PaymentHistoryResponse(BaseModel):
+    """Payment history item"""
+    id: str
+    razorpay_order_id: str
+    razorpay_payment_id: Optional[str]
+    amount: int
+    currency: str
+    status: str
+    created_at: datetime
