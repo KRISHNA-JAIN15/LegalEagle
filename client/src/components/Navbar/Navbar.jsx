@@ -8,6 +8,7 @@ import {
   MessageCircle,
   LogOut,
   User,
+  MessageSquare,
 } from "lucide-react";
 import { supabase } from "../../supabaseClient";
 import "./Navbar.css";
@@ -128,6 +129,14 @@ const Navbar = () => {
 
       {isAuthenticated ? (
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <Link
+            to="/chat"
+            className="navbar-chat-btn"
+            onClick={() => setIsMobileOpen(false)}
+          >
+            <MessageSquare size={18} />
+            <span>Chat</span>
+          </Link>
           <div
             style={{
               display: "flex",

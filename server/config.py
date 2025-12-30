@@ -25,7 +25,7 @@ MONGODB_DOCUMENTS_COLLECTION = "documents"
 EMBEDDING_MODEL = "embed-english-v3.0"  # Cohere model that produces 1024 dimensions
 
 # LLM Configuration
-LLM_MODEL = "gemini-1.5-flash"
+LLM_MODEL = "gemini-2.5-flash"
 LLM_TEMPERATURE = 0.3
 
 # Document Processing
