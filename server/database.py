@@ -280,7 +280,7 @@ class Database:
                 "chat_count": 0,
                 "document_count": 0,
                 "query_count": 0,
-                "remaining_queries": 0,  # Premium queries remaining
+                "remaining_queries": 0,  # 0 for free users, -1 for premium (unlimited)
                 "total_payments": 0,
                 "created_at": datetime.utcnow(),
                 "updated_at": datetime.utcnow()
@@ -318,7 +318,7 @@ class Database:
         return result
     
     async def increment_user_query_count(self, user_id: str) -> dict:
-        """Increment user's query count and decrement remaining queries if premium"""
+        """Increment user's query count (premium users have unlimited queries)"""
         user = await self.get_user(user_id)
         
         update = {
@@ -326,23 +326,14 @@ class Database:
             "$set": {"updated_at": datetime.utcnow()}
         }
         
-        # If user is premium and has remaining queries, decrement
-        if user and user.get("is_premium") and user.get("remaining_queries", 0) > 0:
-            update["$inc"]["remaining_queries"] = -1
+        # Premium users have unlimited queries, so we don't decrement
+        # remaining_queries will always be -1 for premium users
         
         result = await self.users.find_one_and_update(
             {"user_id": user_id},
             update,
             return_document=True
         )
-        
-        # Check if premium should be revoked (no remaining queries)
-        if result and result.get("is_premium") and result.get("remaining_queries", 0) <= 0:
-            await self.users.update_one(
-                {"user_id": user_id},
-                {"$set": {"is_premium": False}}
-            )
-            result["is_premium"] = False
         
         return result
     
@@ -359,14 +350,14 @@ class Database:
             return {
                 "can_create_chat": True,
                 "can_upload_document": True,
-                "can_query": remaining_queries > 0,
+                "can_query": True,  # Premium users have unlimited queries
                 "is_premium": True,
                 "chat_count": chat_count,
                 "document_count": document_count,
-                "remaining_queries": remaining_queries,
+                "remaining_queries": -1,  # -1 indicates unlimited
                 "chat_limit": None,
                 "document_limit": None,
-                "message": "Premium user"
+                "message": "Premium user with unlimited access"
             }
         
         can_create_chat = chat_count < FREE_CHAT_LIMIT
@@ -388,16 +379,16 @@ class Database:
         }
     
     async def upgrade_to_premium(self, user_id: str, queries: int = PREMIUM_QUERIES_LIMIT) -> dict:
-        """Upgrade user to premium with given number of queries"""
+        """Upgrade user to premium with unlimited queries"""
         result = await self.users.find_one_and_update(
             {"user_id": user_id},
             {
                 "$set": {
                     "is_premium": True,
+                    "remaining_queries": -1,  # -1 indicates unlimited
                     "updated_at": datetime.utcnow()
                 },
                 "$inc": {
-                    "remaining_queries": queries,
                     "total_payments": 1
                 }
             },

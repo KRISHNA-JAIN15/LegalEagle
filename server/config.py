@@ -17,7 +17,7 @@ RAZORPAY_KEY_SECRET = os.getenv("RAZORPAY_KEY_SECRET", "91tVkHIG8AAdpccevrQ04Vsi
 FREE_CHAT_LIMIT = 2
 FREE_DOCUMENT_LIMIT = 2
 PREMIUM_PRICE_INR = 49900  # ₹499 in paise
-PREMIUM_QUERIES_LIMIT = 100  # Queries per payment
+PREMIUM_QUERIES_LIMIT = -1  # -1 indicates unlimited queries for premium users
 
 # Pinecone Configuration
 PINECONE_INDEX_NAME = "legaleagle"

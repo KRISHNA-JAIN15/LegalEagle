@@ -180,7 +180,7 @@ const Pricing = () => {
     { text: "2 Document Uploads", included: true },
     { text: "Basic Legal Analysis", included: true },
     { text: "Community Support", included: true },
-    { text: "Unlimited Queries", included: false },
+    { text: "Unlimited AI Queries", included: false },
     { text: "Priority Support", included: false },
     { text: "Advanced Templates", included: false },
   ];
@@ -188,7 +188,7 @@ const Pricing = () => {
   const premiumFeatures = [
     { text: "Unlimited Chat Sessions", included: true },
     { text: "Unlimited Document Uploads", included: true },
-    { text: "100 AI-Powered Queries", included: true },
+    { text: "Unlimited AI Queries", included: true },
     { text: "Advanced Legal Analysis", included: true },
     { text: "Priority Support", included: true },
     { text: "All Premium Templates", included: true },
@@ -246,7 +246,7 @@ const Pricing = () => {
             <Crown size={24} />
             <div className="premium-banner-text">
               <strong>You're a Premium User!</strong>
-              <span>{userStatus.remaining_queries} queries remaining</span>
+              <span>Unlimited queries available</span>
             </div>
             <Link to="/chat" className="premium-cta">
               Continue to Chat
@@ -381,10 +381,11 @@ const Pricing = () => {
           <h2>Frequently Asked Questions</h2>
           <div className="faq-grid">
             <div className="faq-item">
-              <h4>What happens after I use my 100 queries?</h4>
+              <h4>Are there any query limits for premium users?</h4>
               <p>
-                You can purchase another premium pack to get 100 more queries.
-                Your chat history and documents will remain accessible.
+                No! Premium users enjoy unlimited AI queries. Chat as much as
+                you need with no restrictions. Your chat history and documents
+                remain accessible forever.
               </p>
             </div>
             <div className="faq-item">

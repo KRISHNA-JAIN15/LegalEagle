@@ -718,9 +718,9 @@ async def verify_payment(request: VerifyPaymentRequest):
         
         return PaymentVerifyResponse(
             status="success",
-            message="Payment verified successfully. You are now a premium user!",
+            message="Payment verified successfully. You are now a premium user with unlimited queries!",
             is_premium=True,
-            remaining_queries=user.get("remaining_queries", PREMIUM_QUERIES_LIMIT)
+            remaining_queries=-1  # -1 indicates unlimited
         )
         
     except HTTPException:

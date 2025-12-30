@@ -691,7 +691,7 @@ const Chat = () => {
               {userStatus.is_premium ? (
                 <>
                   <Crown size={16} />
-                  <span>{userStatus.remaining_queries} queries left</span>
+                  <span>Unlimited queries</span>
                 </>
               ) : (
                 <>
