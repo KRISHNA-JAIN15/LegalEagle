@@ -455,6 +455,13 @@ const Chat = () => {
     }
   };
 
+  // Clean markdown formatting from text
+  const cleanMarkdown = (text) => {
+    if (!text) return "";
+    // Remove ** (bold markdown)
+    return text.replace(/\*\*/g, "");
+  };
+
   // ==================== Filter and Sort Chats ====================
 
   const filteredChats = chats
@@ -762,17 +769,21 @@ const Chat = () => {
                       }`}
                     >
                       <div className="message-content">
-                        <p>{message.content}</p>
+                        <p>{cleanMarkdown(message.content)}</p>
                         {message.sources && message.sources.length > 0 && (
                           <div className="message-sources">
-                            <span className="sources-label">Sources:</span>
+                            {/* <span className="sources-label">Sources:</span>
                             {message.sources.map((source, idx) => (
                               <span key={idx} className="source-tag">
-                                {source.source ||
+                                {source.metadata?.source ||
+                                  source.metadata?.filename ||
+                                  source.source ||
                                   source.filename ||
-                                  `Source ${idx + 1}`}
+                                  `Document ${idx + 1}`}
+                                {source.metadata?.page &&
+                                  ` (Page ${source.metadata.page})`}
                               </span>
-                            ))}
+                            ))} */}
                           </div>
                         )}
                         <span className="message-time">
